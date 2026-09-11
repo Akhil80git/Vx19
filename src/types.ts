@@ -69,6 +69,7 @@ export interface CommandItem {
   cmd: string;
   category: string; // custom categories: 'npm', 'db', 'docker', 'folder', 'git', 'dev', 'build', 'deploy' etc.
   description?: string;
+  isFavorite?: boolean;
 }
 
 export interface StructureModel {
@@ -114,6 +115,8 @@ export interface ChatMessage {
   id: string;
   text: string;
   timestamp: string;
+  isPinned?: boolean;
+  tag?: string;
 }
 
 export interface ChatSession {
