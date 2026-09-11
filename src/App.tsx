@@ -413,7 +413,7 @@ service cloud.firestore {
         />
 
         {/* Content Area (Only this right area scrolls) */}
-        <main className="flex-1 h-full overflow-y-auto min-h-0 p-4 sm:p-6 lg:p-8 relative">
+        <main className="flex-1 h-full overflow-y-auto min-h-0 p-2.5 sm:p-3 md:p-4 relative">
           
           {/* Live Notification Banner */}
           {statusNotification && (

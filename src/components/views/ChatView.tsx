@@ -223,7 +223,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-5.5rem)] bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in duration-150">
+    <div className="relative w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4.5rem)] min-h-[500px] bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in duration-150">
       
       {/* Top Header Bar with Three-Line Menu (Hamburger) and Actions */}
       <div className="h-12 border-b border-slate-800 bg-slate-950/80 px-3 flex items-center justify-between gap-3 shrink-0">
