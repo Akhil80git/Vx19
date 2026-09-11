@@ -25,6 +25,7 @@ import {
 interface StructureViewProps {
   project: Project;
   onUpdateProject: (updated: Project) => void;
+  theme?: 'dark' | 'light';
 }
 
 // Default initial starter node if user starts completely fresh
@@ -126,8 +127,10 @@ function getFileBadge(name: string) {
 
 export const StructureView: React.FC<StructureViewProps> = ({
   project,
-  onUpdateProject
+  onUpdateProject,
+  theme = 'dark'
 }) => {
+  const isLight = theme === 'light';
   // 1. Multiple Structures in the same project
   const [structures, setStructures] = useState<StructureModel[]>(() => {
     if (project.structures && project.structures.length > 0) {
@@ -417,7 +420,7 @@ echo "Done! Project structure created."
     if (!nodes || nodes.length === 0) return null;
 
     return (
-      <div className={`space-y-1.5 ${!isRoot ? 'relative pl-5 ml-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-slate-800' : ''}`}>
+      <div className={`space-y-1.5 ${!isRoot ? `relative pl-5 ml-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px ${isLight ? 'before:bg-slate-300' : 'before:bg-slate-800'}` : ''}`}>
         {nodes.map((node, index) => {
           const isFolder = node.type === 'folder';
           const isExpanded = expandedFolders[node.id] ?? true;
@@ -428,15 +431,21 @@ echo "Done! Project structure created."
               
               {/* Connecting branch guideline (horizontal line from parent vertical line) */}
               {!isRoot && (
-                <div className="absolute -left-5 top-4 w-4 h-px bg-slate-800 pointer-events-none group-hover:bg-slate-700 transition-colors" />
+                <div className={`absolute -left-5 top-4 w-4 h-px pointer-events-none transition-colors ${
+                  isLight ? 'bg-slate-300 group-hover:bg-slate-400' : 'bg-slate-800 group-hover:bg-slate-700'
+                }`} />
               )}
 
               {/* Node Card Row: Dynamic content width */}
               <div 
                 className={`w-fit min-w-[260px] sm:min-w-[340px] max-w-full flex items-center justify-between gap-4 p-2 rounded-xl transition select-none ${
-                  isFolder 
-                    ? 'bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-100' 
-                    : 'bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-slate-200'
+                  isLight
+                    ? isFolder
+                      ? 'bg-white border border-slate-200 hover:border-slate-300 text-slate-900 shadow-xs'
+                      : 'bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-800'
+                    : isFolder 
+                      ? 'bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-100' 
+                      : 'bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-slate-200'
                 }`}
               >
                 {/* Left Side: Expand icon, folder/file icon, name, description */}
@@ -447,7 +456,9 @@ echo "Done! Project structure created."
                   {isFolder ? (
                     <button 
                       type="button"
-                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition"
+                      className={`p-1 rounded transition ${
+                        isLight ? 'hover:bg-slate-100 text-slate-500 hover:text-slate-800' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                      }`}
                     >
                       {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                     </button>
@@ -463,11 +474,15 @@ echo "Done! Project structure created."
                       <Folder className="w-4 h-4 text-amber-400 shrink-0" />
                     )
                   ) : (
-                    <FileCode className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
                   )}
 
                   {/* Name */}
-                  <span className={`font-mono text-xs truncate ${isFolder ? 'font-bold text-white' : 'font-medium text-slate-200'}`}>
+                  <span className={`font-mono text-xs truncate ${
+                    isLight 
+                      ? (isFolder ? 'font-bold text-slate-900' : 'font-medium text-slate-800') 
+                      : (isFolder ? 'font-bold text-white' : 'font-medium text-slate-200')
+                  }`}>
                     {node.name}
                   </span>
 
@@ -480,7 +495,7 @@ echo "Done! Project structure created."
 
                   {/* Description note */}
                   {node.description && (
-                    <span className="hidden sm:inline-block text-[11px] text-slate-400 truncate italic">
+                    <span className={`hidden sm:inline-block text-[11px] truncate italic ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       — {node.description}
                     </span>
                   )}
@@ -499,10 +514,12 @@ echo "Done! Project structure created."
                           setNewNodeDesc('');
                           setIsAddingNode(true);
                         }}
-                        className="py-1 px-2 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                        className={`py-1 px-2 text-[11px] rounded-lg flex items-center gap-1 transition cursor-pointer ${
+                          isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                        }`}
                         title="Add file inside this folder"
                       >
-                        <FilePlus className="w-3 h-3 text-emerald-400" />
+                        <FilePlus className="w-3 h-3 text-emerald-500" />
                         <span className="hidden sm:inline">+ File</span>
                       </button>
                       <button
@@ -514,7 +531,9 @@ echo "Done! Project structure created."
                           setNewNodeDesc('');
                           setIsAddingNode(true);
                         }}
-                        className="py-1 px-2 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                        className={`py-1 px-2 text-[11px] rounded-lg flex items-center gap-1 transition cursor-pointer ${
+                          isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                        }`}
                         title="Add sub-folder inside this folder"
                       >
                         <FolderPlus className="w-3 h-3 text-amber-400" />
@@ -525,7 +544,9 @@ echo "Done! Project structure created."
 
                   <button
                     onClick={() => handleDeleteNode(node.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      isLight ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-slate-500 hover:text-red-400 hover:bg-slate-800'
+                    }`}
                     title={`Delete ${isFolder ? 'folder' : 'file'}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -550,25 +571,29 @@ echo "Done! Project structure created."
     <div className="space-y-3 max-w-6xl mx-auto pb-12 animate-in fade-in duration-200">
       
       {/* Top Single Unified Row: + Button, Inline New Struct Input, All Struct Tabs in SAME ROW, and Root Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-800/80">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
         
         {/* Left Side: + Icon & All Structures as Pills in the same row! */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 flex-nowrap">
           {/* + Button for New Structure */}
           {showQuickAddStruct ? (
-            <form onSubmit={handleQuickAddStructure} className="flex items-center gap-1 bg-slate-900 border border-emerald-500/60 rounded-xl px-2.5 py-1 shrink-0">
+            <form onSubmit={handleQuickAddStructure} className={`flex items-center gap-1 ${
+              isLight ? 'bg-white border-emerald-500 text-slate-900' : 'bg-slate-900 border-emerald-500/60'
+            } border rounded-xl px-2.5 py-1 shrink-0`}>
               <input
                 type="text"
                 value={quickStructName}
                 onChange={(e) => setQuickStructName(e.target.value)}
                 placeholder="Structure name (backend, frontend)..."
                 autoFocus
-                className="w-36 sm:w-44 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                className={`w-36 sm:w-44 bg-transparent text-xs ${isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-slate-500'} focus:outline-none font-mono`}
               />
               <select
                 value={quickStructType}
                 onChange={(e) => setQuickStructType(e.target.value as 'blank' | 'react')}
-                className="bg-slate-950 text-[10px] text-emerald-400 border border-slate-700 rounded px-1.5 py-0.5 focus:outline-none"
+                className={`text-[10px] rounded px-1.5 py-0.5 focus:outline-none ${
+                  isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-950 text-emerald-400 border-slate-700'
+                } border`}
               >
                 <option value="blank">Clean Blank (0 files)</option>
                 <option value="react">Starter Template</option>
@@ -576,7 +601,7 @@ echo "Done! Project structure created."
               <button
                 type="submit"
                 disabled={!quickStructName.trim()}
-                className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40 p-0.5 cursor-pointer"
+                className="text-emerald-500 hover:text-emerald-600 disabled:opacity-40 p-0.5 cursor-pointer"
                 title="Create structure"
               >
                 <Check className="w-3.5 h-3.5" />
@@ -584,7 +609,7 @@ echo "Done! Project structure created."
               <button
                 type="button"
                 onClick={() => { setShowQuickAddStruct(false); setQuickStructName(''); }}
-                className="text-slate-400 hover:text-white p-0.5 cursor-pointer"
+                className={`${isLight ? 'text-slate-400 hover:text-slate-700' : 'text-slate-400 hover:text-white'} p-0.5 cursor-pointer`}
                 title="Cancel"
               >
                 <X className="w-3.5 h-3.5" />
@@ -593,7 +618,9 @@ echo "Done! Project structure created."
           ) : (
             <button
               onClick={() => setShowQuickAddStruct(true)}
-              className="h-8 px-2.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+              className={`h-8 px-2.5 ${
+                isLight ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300'
+              } border rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0`}
               title="Add New Structure"
             >
               <Plus className="w-4 h-4" />
@@ -610,8 +637,12 @@ echo "Done! Project structure created."
                 onClick={() => setActiveStructureId(s.id)}
                 className={`group h-8 px-3 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
                   isActive
-                    ? 'bg-slate-800 text-emerald-300 border border-emerald-500/60 shadow-sm'
-                    : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                    ? isLight
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-400 shadow-xs font-semibold'
+                      : 'bg-slate-800 text-emerald-300 border border-emerald-500/60 shadow-sm'
+                    : isLight
+                      ? 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
+                      : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <FolderTree className="w-3.5 h-3.5" />
@@ -644,7 +675,9 @@ echo "Done! Project structure created."
               setNewNodeDesc('');
               setIsAddingNode(true);
             }}
-            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className={`h-8 px-2.5 ${
+              isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
+            } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
             title="Create root folder"
           >
             <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
@@ -661,39 +694,45 @@ echo "Done! Project structure created."
               setNewNodeDesc('');
               setIsAddingNode(true);
             }}
-            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className={`h-8 px-2.5 ${
+              isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
+            } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
             title="Create root file"
           >
-            <FilePlus className="w-3.5 h-3.5 text-emerald-400" />
+            <FilePlus className="w-3.5 h-3.5 text-emerald-500" />
             <span>+ Root File</span>
           </button>
 
           {/* Copy Tree Text */}
           <button
             onClick={handleCopyAscii}
-            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className={`h-8 px-2.5 ${
+              isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+            } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
             title="Copy ASCII Tree text"
           >
-            {copiedAscii ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            {copiedAscii ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
             <span className="hidden md:inline">Tree</span>
           </button>
 
           {/* Copy Bash Script */}
           <button
             onClick={handleCopyBash}
-            className="h-8 px-2.5 bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className={`h-8 px-2.5 ${
+              isLight ? 'bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border-cyan-300' : 'bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border-cyan-500/30'
+            } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
             title="Copy Bash mkdir script"
           >
-            {copiedBash ? <Check className="w-3 h-3 text-cyan-400" /> : <Terminal className="w-3 h-3" />}
+            {copiedBash ? <Check className="w-3 h-3 text-cyan-500" /> : <Terminal className="w-3 h-3" />}
             <span className="hidden md:inline">Bash</span>
           </button>
 
           {/* Visual / ASCII toggle */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-0.5 rounded-xl">
+          <div className={`flex items-center ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border p-0.5 rounded-xl`}>
             <button
               onClick={() => setViewMode('visual')}
               className={`px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                viewMode === 'visual' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'visual' ? 'bg-emerald-600 text-white' : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white')
               }`}
             >
               Tree
@@ -701,7 +740,7 @@ echo "Done! Project structure created."
             <button
               onClick={() => setViewMode('ascii')}
               className={`px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                viewMode === 'ascii' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'ascii' ? 'bg-emerald-600 text-white' : (isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white')
               }`}
             >
               ASCII
@@ -712,7 +751,7 @@ echo "Done! Project structure created."
 
       {/* Main View Area */}
       {viewMode === 'visual' ? (
-        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl shadow-xl shadow-black/20">
+        <div className={`${isLight ? 'bg-white border-slate-200 text-slate-800 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-100 shadow-xl shadow-black/20'} border p-4 sm:p-6 rounded-2xl`}>
           {activeStructure.tree.length === 0 ? (
             <div className="p-10 text-center text-slate-400 space-y-3">
               <FolderTree className="w-10 h-10 text-slate-600 mx-auto" />
@@ -756,18 +795,18 @@ echo "Done! Project structure created."
         </div>
       ) : (
         /* ASCII Text Preview & Editor */
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+        <div className={`${isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-100'} border p-5 rounded-2xl space-y-3`}>
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span>Terminal ASCII View:</span>
             <button
               onClick={handleCopyAscii}
-              className="text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+              className="text-emerald-500 hover:underline cursor-pointer flex items-center gap-1"
             >
               <Copy className="w-3 h-3" />
               <span>Copy All Text</span>
             </button>
           </div>
-          <pre className="p-4 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs sm:text-sm text-emerald-300 leading-relaxed overflow-x-auto select-all">
+          <pre className={`p-4 ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-800 text-emerald-300'} border rounded-xl font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto select-all`}>
             {treeToAscii(activeStructure.tree) || 'Root structure is empty.'}
           </pre>
         </div>
@@ -775,18 +814,18 @@ echo "Done! Project structure created."
 
       {/* Modal: Add File or Folder (Works 100% reliably for Root & Nested folders) */}
       {isAddingNode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                {newNodeType === 'folder' ? <FolderPlus className="w-5 h-5 text-amber-400" /> : <FilePlus className="w-5 h-5 text-emerald-400" />}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-slate-100'} border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4`}>
+            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+              <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+                {newNodeType === 'folder' ? <FolderPlus className="w-5 h-5 text-amber-400" /> : <FilePlus className="w-5 h-5 text-emerald-500" />}
                 <span>
                   Add {newNodeType === 'folder' ? 'Folder' : 'File'} {targetFolderId ? `in "${targetFolderName}"` : 'at Root Level (/)'}
                 </span>
               </h3>
               <button
                 onClick={() => setIsAddingNode(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                className={`p-1 rounded-lg ${isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'} transition cursor-pointer`}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -794,7 +833,7 @@ echo "Done! Project structure created."
 
             <form onSubmit={handleAddNodeSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1">
+                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
                   {newNodeType === 'folder' 
                     ? (targetFolderId ? 'Sub-Folder Name (e.g. components, utils, routes)' : 'Root Folder Name (e.g. backend, frontend, docs, server)')
                     : (targetFolderId ? 'File Name (e.g. Button.tsx, controller.ts)' : 'Root File Name (e.g. package.json, README.md, .env)')}
@@ -806,35 +845,43 @@ echo "Done! Project structure created."
                   placeholder={newNodeType === 'folder' ? (targetFolderId ? 'e.g. services' : 'e.g. backend') : (targetFolderId ? 'e.g. auth.service.ts' : 'e.g. package.json')}
                   autoFocus
                   required
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className={`w-full ${
+                    isLight 
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
+                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
+                  } border rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500`}
                 />
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">
-                  Description / Purpose <span className="text-slate-500">(Optional)</span>
+                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
+                  Description / Purpose <span className="text-slate-400">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   value={newNodeDesc}
                   onChange={(e) => setNewNodeDesc(e.target.value)}
                   placeholder="e.g. Express server or UI components"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className={`w-full ${
+                    isLight 
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
+                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
+                  } border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500`}
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddingNode(false)}
-                  className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition cursor-pointer"
+                  className={`py-2 px-4 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} rounded-xl font-medium transition cursor-pointer`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!newNodeName.trim()}
-                  className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Check className="w-4 h-4" />
                   <span>Add {newNodeType === 'folder' ? 'Folder' : 'File'}</span>
@@ -847,28 +894,28 @@ echo "Done! Project structure created."
 
       {/* Modal: Create Naya Structure in this project */}
       {showNewStructureModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <FolderTree className="w-5 h-5 text-emerald-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-slate-100'} border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4`}>
+            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+              <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+                <FolderTree className="w-5 h-5 text-emerald-500" />
                 Naya Folder Structure Banayein
               </h3>
               <button
                 onClick={() => setShowNewStructureModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className={`p-1 rounded-lg ${isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'} transition`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
+            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
               Aap is ek hi project ke andar alag-alag structures (jaise: Backend API, Frontend App, Microservices) maintain kar sakte hain.
             </p>
 
             <form onSubmit={handleCreateStructure} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1">
+                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
                   Structure Name *
                 </label>
                 <input
@@ -878,25 +925,33 @@ echo "Done! Project structure created."
                   placeholder="e.g. Backend API Structure, Monorepo Layout"
                   autoFocus
                   required
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className={`w-full ${
+                    isLight 
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
+                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
+                  } border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500`}
                 />
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">
-                  Description <span className="text-slate-500">(Optional)</span>
+                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
+                  Description <span className="text-slate-400">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   value={newStructureDesc}
                   onChange={(e) => setNewStructureDesc(e.target.value)}
                   placeholder="e.g. Node.js Express controllers and routes"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className={`w-full ${
+                    isLight 
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
+                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
+                  } border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500`}
                 />
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">
+                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
                   Initial Template
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -905,12 +960,12 @@ echo "Done! Project structure created."
                     onClick={() => setNewStructureTemplate('react')}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition ${
                       newStructureTemplate === 'react' 
-                        ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' 
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                        ? (isLight ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300')
+                        : (isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-400')
                     }`}
                   >
                     <span className="font-semibold block text-xs">Fullstack / React</span>
-                    <span className="text-[10px] text-slate-500">src, components, main</span>
+                    <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>src, components, main</span>
                   </button>
 
                   <button
@@ -918,28 +973,28 @@ echo "Done! Project structure created."
                     onClick={() => setNewStructureTemplate('blank')}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition ${
                       newStructureTemplate === 'blank' 
-                        ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' 
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                        ? (isLight ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300')
+                        : (isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-400')
                     }`}
                   >
                     <span className="font-semibold block text-xs">Clean / Blank</span>
-                    <span className="text-[10px] text-slate-500">0 folders (khali)</span>
+                    <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>0 folders (khali)</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <div className={`flex items-center justify-end gap-2 pt-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
                 <button
                   type="button"
                   onClick={() => setShowNewStructureModal(false)}
-                  className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition cursor-pointer"
+                  className={`py-2 px-4 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} rounded-xl font-medium transition cursor-pointer`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!newStructureName.trim()}
-                  className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Check className="w-4 h-4" />
                   <span>Structure Banayein</span>

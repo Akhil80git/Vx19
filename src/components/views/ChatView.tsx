@@ -19,6 +19,7 @@ import {
 interface ChatViewProps {
   project: Project;
   onUpdateProject: (updated: Project) => void;
+  theme?: 'dark' | 'light';
 }
 
 const DEFAULT_INITIAL_MESSAGES: ChatMessage[] = [
@@ -31,8 +32,10 @@ const DEFAULT_INITIAL_MESSAGES: ChatMessage[] = [
 
 export const ChatView: React.FC<ChatViewProps> = ({
   project,
-  onUpdateProject
+  onUpdateProject,
+  theme = 'dark'
 }) => {
+  const isLight = theme === 'light';
   // Chat sessions state
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     if (project.chatSessions && project.chatSessions.length > 0) {
@@ -223,20 +226,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4.5rem)] min-h-[500px] bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in duration-150">
+    <div className={`relative w-full max-w-5xl mx-auto flex flex-col h-[calc(100vh-4.5rem)] min-h-[500px] ${
+      isLight ? 'bg-white border-slate-200 shadow-md text-slate-800' : 'bg-slate-900 border-slate-800 shadow-xl text-slate-100'
+    } border rounded-xl overflow-hidden animate-in fade-in duration-150`}>
       
       {/* Top Header Bar with Three-Line Menu (Hamburger) and Actions */}
-      <div className="h-12 border-b border-slate-800 bg-slate-950/80 px-3 flex items-center justify-between gap-3 shrink-0">
+      <div className={`h-12 border-b ${isLight ? 'border-slate-200 bg-slate-50/90' : 'border-slate-800 bg-slate-950/80'} px-3 flex items-center justify-between gap-3 shrink-0`}>
         
         {/* Left: Three-Line Menu Icon for History & Current Chat Title */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowHistoryDrawer(true)}
-            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition cursor-pointer flex items-center gap-1.5"
+            className={`p-1.5 rounded-lg ${
+              isLight ? 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+            } border transition cursor-pointer flex items-center gap-1.5`}
             title="Chat History & Saved Sessions (3-Line Icon)"
           >
-            <Menu className="w-4 h-4 text-emerald-400" />
+            <Menu className="w-4 h-4 text-emerald-500" />
             <span className="text-xs font-semibold hidden sm:inline">History</span>
           </button>
 
@@ -250,11 +257,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 onBlur={() => handleSaveTitle(activeSession.id)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle(activeSession.id)}
                 autoFocus
-                className="bg-slate-900 border border-emerald-500 rounded px-2 py-0.5 text-xs text-white focus:outline-none"
+                className={`${isLight ? 'bg-white border-emerald-500 text-slate-900' : 'bg-slate-900 border-emerald-500 text-white'} border rounded px-2 py-0.5 text-xs focus:outline-none`}
               />
               <button
                 onClick={() => handleSaveTitle(activeSession.id)}
-                className="text-emerald-400 p-0.5"
+                className="text-emerald-500 p-0.5"
               >
                 <Check className="w-3.5 h-3.5" />
               </button>
@@ -265,18 +272,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 setEditingTitleId(activeSession?.id || null);
                 setTitleInput(activeSession?.title || '');
               }}
-              className="group flex items-center gap-1.5 cursor-pointer hover:bg-slate-900/60 px-2 py-1 rounded-lg transition"
+              className={`group flex items-center gap-1.5 cursor-pointer ${isLight ? 'hover:bg-slate-200/60' : 'hover:bg-slate-900/60'} px-2 py-1 rounded-lg transition`}
               title="Click to rename this chat"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-xs font-bold text-white truncate max-w-[200px]">
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate max-w-[200px]`}>
                 {activeSession?.title || 'Self Chat'}
               </span>
-              <Edit2 className="w-2.5 h-2.5 text-slate-500 opacity-0 group-hover:opacity-100 transition" />
+              <Edit2 className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
             </div>
           )}
 
-          <span className="text-[11px] text-slate-500 hidden md:inline font-mono">
+          <span className="text-[11px] text-slate-400 hidden md:inline font-mono">
             ({activeSession?.messages?.length || 0} boxes)
           </span>
         </div>
@@ -287,7 +294,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <button
             type="button"
             onClick={handleCreateNewChat}
-            className="h-7 px-2.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            className={`h-7 px-2.5 ${
+              isLight ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-emerald-950 hover:bg-emerald-900 border-emerald-500/40 text-emerald-300'
+            } border rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
             title="Start a fresh new chat session"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -299,10 +308,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <button
               type="button"
               onClick={handleClearCurrentChat}
-              className="h-7 px-2 bg-slate-900 hover:bg-red-950/60 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+              className={`h-7 px-2 ${
+                isLight ? 'bg-white hover:bg-red-50 border-slate-200 hover:border-red-300 text-slate-500 hover:text-red-600' : 'bg-slate-900 hover:bg-red-950/60 border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-300'
+              } border rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
               title="Is pure chat ke saare messages ek saath delete karein"
             >
-              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
               <span className="hidden md:inline">Clear Chat</span>
             </button>
           )}
@@ -310,12 +321,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* Main Messages Area: Dynamic Content-Width Message Boxes */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col items-start space-y-2.5">
+      <div className={`flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col items-start space-y-2.5 ${isLight ? 'bg-slate-50/50' : 'bg-transparent'}`}>
         {(!activeSession || activeSession.messages.length === 0) ? (
-          <div className="h-full w-full flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-2">
-            <MessageSquare className="w-10 h-10 text-slate-700 mx-auto" />
-            <p className="text-sm font-medium text-slate-400">Yeh Chat khali hai</p>
-            <p className="text-xs text-slate-500 max-w-sm">
+          <div className="h-full w-full flex flex-col items-center justify-center text-center p-8 text-slate-400 space-y-2">
+            <MessageSquare className="w-10 h-10 text-slate-400 mx-auto" />
+            <p className={`text-sm font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Yeh Chat khali hai</p>
+            <p className="text-xs text-slate-400 max-w-sm">
               Neeche diye gaye input box me apne self notes, commands, instructions ya ideas type karein.
             </p>
           </div>
@@ -327,25 +338,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
               /* DYNAMIC CONTENT-WIDTH MESSAGE BOX */
               <div
                 key={msg.id}
-                className="group relative w-fit min-w-[220px] max-w-[95%] sm:max-w-[80%] bg-slate-950/90 hover:bg-slate-950 border border-slate-800 hover:border-slate-700/90 rounded-xl p-3 shadow-sm transition duration-150 text-slate-200"
+                className={`group relative w-fit min-w-[220px] max-w-[95%] sm:max-w-[80%] ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50/80 border-slate-200 text-slate-800 shadow-xs'
+                    : 'bg-slate-950/90 hover:bg-slate-950 border-slate-800 text-slate-200 shadow-sm'
+                } border rounded-xl p-3 transition duration-150`}
               >
                 {/* Header of the message box: Cross (X) on the LEFT, Copy on the RIGHT */}
-                <div className="flex items-center justify-between gap-4 pb-1.5 mb-1.5 border-b border-slate-900 text-[11px] text-slate-400">
+                <div className={`flex items-center justify-between gap-4 pb-1.5 mb-1.5 border-b ${
+                  isLight ? 'border-slate-100 text-slate-500' : 'border-slate-900 text-slate-400'
+                } text-[11px]`}>
                   {/* Left: Cross (X) Delete Icon & Timestamp */}
                   <div className="flex items-center gap-2">
                     {/* Cross (X) to delete this message box on the LEFT side */}
                     <button
                       type="button"
                       onClick={() => handleDeleteMessage(msg.id)}
-                      className="p-0.5 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition cursor-pointer"
+                      className={`p-0.5 rounded ${isLight ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-slate-500 hover:text-red-400 hover:bg-red-950/40'} transition cursor-pointer`}
                       title="Delete this message box"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
 
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span className="font-mono text-[10px] text-slate-500">{msg.timestamp}</span>
-                    <span className="text-[10px] text-slate-600">#{index + 1}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="font-mono text-[10px] text-slate-400">{msg.timestamp}</span>
+                    <span className="text-[10px] text-slate-400">#{index + 1}</span>
                   </div>
 
                   {/* Right: 1-Click Copy Button */}
@@ -354,17 +371,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       type="button"
                       onClick={() => handleCopyMessage(msg.id, msg.text)}
                       className={`p-1 rounded transition cursor-pointer ${
-                        isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        isCopied 
+                          ? 'text-emerald-500 bg-emerald-50' 
+                          : isLight 
+                            ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-100' 
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
                       }`}
                       title="Copy text"
                     >
-                      {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
 
                 {/* Message Content (Auto height & content wrap) */}
-                <div className="font-sans text-xs sm:text-sm text-slate-100 whitespace-pre-wrap break-words leading-relaxed select-text">
+                <div className={`font-sans text-xs sm:text-sm ${isLight ? 'text-slate-800' : 'text-slate-100'} whitespace-pre-wrap break-words leading-relaxed select-text`}>
                   {msg.text}
                 </div>
               </div>
@@ -375,7 +396,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* Bottom Message Input Bar */}
-      <div className="p-2.5 sm:p-3 bg-slate-950 border-t border-slate-800 shrink-0">
+      <div className={`p-2.5 sm:p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'} border-t shrink-0`}>
         <form onSubmit={handleSendMessage} className="relative flex items-end gap-2">
           <textarea
             ref={textareaRef}
@@ -384,13 +405,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
             onKeyDown={handleKeyDown}
             placeholder="Kuchh bhi likhein (notes, prompts, thoughts)... Press Enter to send"
             rows={2}
-            className="flex-1 w-full bg-slate-900 border border-slate-700/80 focus:border-emerald-500 rounded-xl p-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none resize-none transition"
+            className={`flex-1 w-full ${
+              isLight 
+                ? 'bg-white border-slate-300 focus:border-emerald-500 text-slate-900 placeholder-slate-400' 
+                : 'bg-slate-900 border-slate-700/80 focus:border-emerald-500 text-white placeholder-slate-500'
+            } border rounded-xl p-2.5 text-xs sm:text-sm focus:outline-none resize-none transition`}
           />
 
           <button
             type="submit"
             disabled={!inputMessage.trim()}
-            className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-md shadow-emerald-950/40"
+            className="h-10 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-sm"
             title="Send Message Box"
           >
             <Send className="w-3.5 h-3.5" />
@@ -398,7 +423,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </button>
         </form>
 
-        <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1 px-1">
+        <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 px-1">
           <span>Enter dabane se send hoga, Shift + Enter se nayi line</span>
           <span>Self-Chat • Safe locally & synced with project</span>
         </div>
@@ -414,17 +439,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
           />
 
           {/* Drawer Panel */}
-          <div className="relative w-72 max-w-[80%] h-full bg-slate-950 border-r border-slate-800 p-4 flex flex-col shadow-2xl z-40 animate-in slide-in-from-left duration-200">
+          <div className={`relative w-72 max-w-[80%] h-full ${
+            isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
+          } border-r p-4 flex flex-col shadow-2xl z-40 animate-in slide-in-from-left duration-200`}>
             
             {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
               <div className="flex items-center gap-2">
-                <Menu className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Chat History</h3>
+                <Menu className="w-4 h-4 text-emerald-500" />
+                <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Chat History</h3>
               </div>
               <button
                 onClick={() => setShowHistoryDrawer(false)}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-900"
+                className={`p-1 rounded ${isLight ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -434,7 +461,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <div className="my-3">
               <button
                 onClick={handleCreateNewChat}
-                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-emerald-950/30"
+                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Nayi Chat Shuru Karein</span>
@@ -443,7 +470,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
             {/* List of Saved Chat Sessions */}
             <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-              <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider px-1 mb-1">
+              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1 mb-1">
                 Saved Sessions ({sessions.length})
               </p>
 
@@ -459,15 +486,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     }}
                     className={`group w-full p-2.5 rounded-xl border flex items-center justify-between gap-2 transition cursor-pointer ${
                       isActive
-                        ? 'bg-slate-800/90 border-emerald-500/50 text-white'
-                        : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900 text-slate-300'
+                        ? isLight
+                          ? 'bg-emerald-50/80 border-emerald-400 text-emerald-950 font-semibold'
+                          : 'bg-slate-800/90 border-emerald-500/50 text-white'
+                        : isLight
+                          ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                          : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900 text-slate-300'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`} />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold truncate">{s.title}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">
+                        <p className="text-[10px] text-slate-400 font-mono">
                           {s.messages.length} messages
                         </p>
                       </div>
@@ -477,7 +508,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     {sessions.length > 1 && (
                       <button
                         onClick={(e) => handleDeleteSession(s.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 rounded hover:bg-slate-800 transition"
+                        className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 rounded ${isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-800'} transition`}
                         title="Delete this chat session"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -489,7 +520,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
 
             {/* Footer note */}
-            <div className="pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+            <div className={`pt-3 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'} text-[10px] text-slate-400 text-center`}>
               Self-Chat Sessions • Persisted with Project
             </div>
 

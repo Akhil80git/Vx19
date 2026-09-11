@@ -516,16 +516,19 @@ service cloud.firestore {
             <StructureView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'commands' ? (
             <CommandsView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'chat' ? (
             <ChatView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'apis' ? (
             <ApiPlannerView
