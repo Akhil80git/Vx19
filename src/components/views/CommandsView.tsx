@@ -398,11 +398,11 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
         </div>
       </div>
 
-      {/* Commands List: Dense, Auto-Expanding, Direct In-Place Editing with Automatic Save Button */}
-      <div className="space-y-1">
+      {/* Commands List: Dynamic Content-Width Cards with Command on Top and Muted Comment Below */}
+      <div className="flex flex-col items-start space-y-2.5">
         {filteredCommands.length === 0 && (
-          <div className="py-6 text-center text-slate-500 text-xs border border-dashed border-slate-800/80 rounded-xl">
-            Abhi koi command nahi hai. Neeche diye gaye input me command likhein aur Enter dabayein.
+          <div className="w-full py-6 text-center text-slate-500 text-xs border border-dashed border-slate-800/80 rounded-xl">
+            Abhi koi command nahi hai. Neeche diye gaye box me command likhein aur Enter dabayein.
           </div>
         )}
 
@@ -410,164 +410,198 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           const isCopied = copiedId === item.id;
           const isDirty = dirtyCmdIds.has(item.id);
 
+          // Calculate dynamic card width based on longest line of command or comment
+          const cmdLines = (item.cmd || '').split('\n');
+          const maxCmdLen = Math.max(...cmdLines.map(l => l.length), 0);
+          const descLen = (item.description || '').length;
+          const longest = Math.max(maxCmdLen, descLen);
+          const chWidth = Math.min(105, Math.max(26, longest + 6));
+
           return (
             <div
               key={item.id}
-              className={`group relative w-full flex items-center gap-1.5 px-2 py-1 bg-slate-900/90 border rounded-lg text-xs transition duration-100 shadow-xs ${
+              style={{
+                width: `${chWidth}ch`,
+                maxWidth: '100%',
+              }}
+              className={`group relative flex flex-col p-2.5 bg-slate-900/90 border rounded-xl transition duration-100 shadow-xs space-y-1.5 ${
                 isDirty 
                   ? 'border-amber-500/60 bg-slate-900' 
-                  : 'border-slate-800/90 hover:border-slate-700'
+                  : 'border-slate-800 hover:border-slate-700'
               }`}
             >
-              {/* 1. Left Copy Icon (Aage copy button) */}
-              <button
-                type="button"
-                onClick={() => handleCopy(item.id, item.cmd)}
-                className={`p-1 rounded text-slate-400 hover:text-white transition cursor-pointer shrink-0 self-start mt-0.5 ${
-                  isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'hover:bg-slate-800'
-                }`}
-                title="Copy this command"
-              >
-                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              {/* Header row: Copy, Category Pill, Save (if modified), Small Delete */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-1 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  {/* 1-Click Copy Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(item.id, item.cmd)}
+                    className={`p-1 rounded text-slate-400 hover:text-white transition cursor-pointer ${
+                      isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'hover:bg-slate-800'
+                    }`}
+                    title="Copy command"
+                  >
+                    {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
 
-              {/* 2. Category Tag (Subtle pill, NO dropdown) */}
-              <span className="self-start mt-1 px-1.5 py-0.2 bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded shrink-0">
-                {item.category || 'npm'}
-              </span>
+                  {/* Category Badge */}
+                  <span className="px-1.5 py-0.2 bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded">
+                    {item.category || 'npm'}
+                  </span>
+                </div>
 
-              {/* 3. Terminal $ Prompt Symbol */}
-              <span className="text-slate-600 font-mono select-none text-xs shrink-0 self-start mt-1">$</span>
+                <div className="flex items-center gap-1.5">
+                  {/* Automatic SAVE button - Appears automatically only when edited! */}
+                  {isDirty && (
+                    <button
+                      type="button"
+                      onClick={() => handleSaveSingleCommand(item.id)}
+                      className="h-5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs animate-in fade-in"
+                      title="Save this edit (Ctrl + Enter)"
+                    >
+                      <Save className="w-2.5 h-2.5" />
+                      <span>Save</span>
+                    </button>
+                  )}
 
-              {/* 4. Auto-Expanding Dynamic Textarea for Command (Grows in height and width with text!) */}
-              <textarea
-                value={item.cmd}
-                rows={1}
-                onChange={(e) => {
-                  handleCommandChange(item.id, e.target.value);
-                  autoResize(e.target);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    handleSaveSingleCommand(item.id);
-                  }
-                }}
-                placeholder="Command string..."
-                className="min-w-0 bg-transparent text-cyan-300 font-mono text-xs font-semibold focus:outline-none resize-none overflow-hidden leading-relaxed py-0.5 tracking-tight"
-                style={{ 
-                  width: `${Math.min(95, Math.max(16, (item.cmd.length || 8) + 2))}ch`, 
-                  maxWidth: '100%', 
-                  minWidth: '12ch',
-                  height: 'auto', 
-                  minHeight: '26px' 
-                }}
-                ref={(el) => {
-                  if (el) autoResize(el);
-                }}
-              />
+                  {/* Delete Icon: Ultra-small and very faded (feeka) */}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCommand(item.id)}
+                    className="p-1 text-slate-600 hover:text-red-400 opacity-20 group-hover:opacity-80 hover:!opacity-100 transition-opacity rounded cursor-pointer"
+                    title="Delete command"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              </div>
 
-              {/* 5. Optional Inline Comment Input (Feeka / Muted so focus stays on command) */}
-              <div className="flex items-center gap-1 max-w-[180px] sm:max-w-[260px] shrink-0 border-l border-slate-800/60 pl-2 self-start mt-1">
-                <span className="text-slate-700 font-mono text-[10px] select-none">#</span>
-                <input
-                  type="text"
-                  value={item.description || ''}
-                  onChange={(e) => handleCommentChange(item.id, e.target.value)}
+              {/* 1. Main Command: Bada Font & High Contrast Cyan */}
+              <div className="flex items-start gap-1.5">
+                <span className="text-slate-600 font-mono select-none text-sm font-semibold mt-0.5">$</span>
+                <textarea
+                  value={item.cmd}
+                  rows={1}
+                  onChange={(e) => {
+                    handleCommandChange(item.id, e.target.value);
+                    autoResize(e.target);
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
                       handleSaveSingleCommand(item.id);
                     }
                   }}
-                  placeholder="comment (optional)"
-                  className="w-full bg-transparent text-[11px] italic text-slate-600 focus:text-slate-400 placeholder-slate-700/80 focus:outline-none truncate"
+                  placeholder="Command string..."
+                  className="w-full bg-transparent text-cyan-300 font-mono text-sm font-bold focus:outline-none resize-none overflow-hidden leading-relaxed tracking-tight py-0"
+                  style={{ height: 'auto', minHeight: '26px' }}
+                  ref={(el) => {
+                    if (el) autoResize(el);
+                  }}
                 />
               </div>
 
-              {/* 6. Automatic SAVE button - Appears automatically only when edited! */}
-              {isDirty && (
-                <button
-                  type="button"
-                  onClick={() => handleSaveSingleCommand(item.id)}
-                  className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0 shadow-sm animate-in fade-in zoom-in-90 duration-100 self-start mt-0.5"
-                  title="Save this edit (Ctrl + Enter)"
-                >
-                  <Save className="w-3 h-3" />
-                  <span>Save</span>
-                </button>
-              )}
-
-              {/* 7. Delete Icon: Ultra-small and very faded (feeka) */}
-              <button
-                type="button"
-                onClick={() => handleDeleteCommand(item.id)}
-                className="p-0.5 text-slate-600 hover:text-red-400 opacity-25 hover:opacity-100 transition-opacity rounded cursor-pointer shrink-0 self-start mt-1.5 ml-auto"
-                title="Delete command"
-              >
-                <Trash2 className="w-2.5 h-2.5" />
-              </button>
+              {/* 2. Comment: Just Neeche & Bahut Feeka (Muted Italic) */}
+              <div className="pt-0.5 border-t border-slate-800/40">
+                <textarea
+                  rows={1}
+                  value={item.description || ''}
+                  onChange={(e) => {
+                    handleCommentChange(item.id, e.target.value);
+                    autoResize(e.target);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleSaveSingleCommand(item.id);
+                    }
+                  }}
+                  placeholder="comment (optional)..."
+                  className="w-full bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
+                  style={{ height: 'auto', minHeight: '20px' }}
+                  ref={(el) => {
+                    if (el) autoResize(el);
+                  }}
+                />
+              </div>
             </div>
           );
         })}
 
-        {/* Live Bottom Input Row: Auto-Expanding Textarea for adding new command */}
+        {/* Live Bottom Input Box: Dynamic Content-Width Card for Adding New Command */}
         <form
           onSubmit={handleAddNewCommand}
-          className="w-full flex items-center gap-1.5 px-2 py-1 bg-slate-950 border border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-lg text-xs transition duration-100 shadow-inner"
+          style={{
+            width: `${Math.min(105, Math.max(34, Math.max(newCmdText.length, newCmdComment.length) + 8))}ch`,
+            maxWidth: '100%',
+          }}
+          className="flex flex-col p-2.5 bg-slate-950 border border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-xl text-xs transition duration-150 shadow-inner space-y-1.5"
         >
-          {/* Left + Icon */}
-          <span className="p-1 text-emerald-400 shrink-0 self-start mt-0.5">
-            <Plus className="w-3.5 h-3.5" />
-          </span>
+          {/* Header Row in Add Form */}
+          <div className="flex items-center justify-between gap-2 border-b border-slate-900 pb-1 text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <span className="p-0.5 text-emerald-400">
+                <Plus className="w-3.5 h-3.5" />
+              </span>
+              <span className="px-1.5 py-0.2 bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded">
+                {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
+              </span>
+            </div>
 
-          {/* Current Category Badge */}
-          <span className="self-start mt-1 px-1.5 py-0.2 bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded shrink-0">
-            {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
-          </span>
+            <button
+              type="submit"
+              disabled={!newCmdText.trim()}
+              className="h-5 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded text-[10px] font-medium flex items-center gap-1 transition cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add Command</span>
+            </button>
+          </div>
 
-          <span className="text-slate-600 font-mono select-none text-xs shrink-0 self-start mt-1">$</span>
-
-          {/* New Command Auto-Expanding Textarea */}
-          <textarea
-            ref={newCmdTextareaRef}
-            rows={1}
-            value={newCmdText}
-            onChange={(e) => {
-              setNewCmdText(e.target.value);
-              autoResize(e.target);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleAddNewCommand();
-              }
-            }}
-            placeholder="Nayi command likhein aur Enter dabayein..."
-            className="flex-1 min-w-0 bg-transparent text-cyan-300 font-mono text-xs font-semibold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-relaxed py-0.5 tracking-tight"
-            style={{ height: 'auto', minHeight: '26px' }}
-          />
-
-          {/* New Comment Input (Feeka) */}
-          <div className="flex items-center gap-1 max-w-[160px] sm:max-w-[220px] shrink-0 border-l border-slate-800/60 pl-2 self-start mt-1">
-            <span className="text-slate-700 font-mono text-[10px] select-none">#</span>
-            <input
-              type="text"
-              value={newCmdComment}
-              onChange={(e) => setNewCmdComment(e.target.value)}
-              placeholder="comment (optional)"
-              className="w-full bg-transparent text-[11px] italic text-slate-600 focus:text-slate-400 placeholder-slate-700/80 focus:outline-none truncate"
+          {/* New Command (Bada Font) */}
+          <div className="flex items-start gap-1.5">
+            <span className="text-slate-600 font-mono select-none text-sm font-semibold mt-0.5">$</span>
+            <textarea
+              ref={newCmdTextareaRef}
+              rows={1}
+              value={newCmdText}
+              onChange={(e) => {
+                setNewCmdText(e.target.value);
+                autoResize(e.target);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddNewCommand();
+                }
+              }}
+              placeholder="Nayi command likhein (e.g. npm init -y)..."
+              className="w-full bg-transparent text-cyan-300 font-mono text-sm font-bold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-relaxed tracking-tight py-0"
+              style={{ height: 'auto', minHeight: '26px' }}
             />
           </div>
 
-          {/* Quick Add Button */}
-          <button
-            type="submit"
-            disabled={!newCmdText.trim()}
-            className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded text-[11px] font-medium flex items-center gap-1 transition cursor-pointer shrink-0 self-start mt-0.5"
-          >
-            <Plus className="w-3 h-3" />
-            <span>Add</span>
-          </button>
+          {/* New Comment (Just Neeche, Bahut Feeka) */}
+          <div className="pt-0.5 border-t border-slate-900">
+            <textarea
+              rows={1}
+              value={newCmdComment}
+              onChange={(e) => {
+                setNewCmdComment(e.target.value);
+                autoResize(e.target);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddNewCommand();
+                }
+              }}
+              placeholder="comment / note (optional)..."
+              className="w-full bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
+              style={{ height: 'auto', minHeight: '20px' }}
+            />
+          </div>
         </form>
       </div>
 
