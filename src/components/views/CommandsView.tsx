@@ -261,7 +261,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
     <div className="w-full max-w-6xl mx-auto space-y-1.5 select-none animate-in fade-in duration-150">
       
       {/* Top Bar: Direct Category + Button, Category Pills, Sync Button & Copy Script */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 border-b border-slate-800/80 text-xs">
+      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 border-b border-slate-800/80 text-xs [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         
         {/* Left Side: + Category Button & Category Pills */}
         <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
@@ -398,10 +398,10 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
         </div>
       </div>
 
-      {/* Commands List: Dynamic Content-Width Cards with Command on Top and Muted Comment Below */}
-      <div className="flex flex-col items-start space-y-2.5">
+      {/* Commands List: Full-Width Clean Cards with Command on Top and Faded Comment Below */}
+      <div className="w-full space-y-2">
         {filteredCommands.length === 0 && (
-          <div className="w-full py-6 text-center text-slate-500 text-xs border border-dashed border-slate-800/80 rounded-xl">
+          <div className="w-full py-8 text-center text-slate-500 text-xs border border-dashed border-slate-800/80 rounded-xl">
             Abhi koi command nahi hai. Neeche diye gaye box me command likhein aur Enter dabayein.
           </div>
         )}
@@ -410,35 +410,24 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           const isCopied = copiedId === item.id;
           const isDirty = dirtyCmdIds.has(item.id);
 
-          // Calculate dynamic card width based on longest line of command or comment
-          const cmdLines = (item.cmd || '').split('\n');
-          const maxCmdLen = Math.max(...cmdLines.map(l => l.length), 0);
-          const descLen = (item.description || '').length;
-          const longest = Math.max(maxCmdLen, descLen);
-          const chWidth = Math.min(105, Math.max(26, longest + 6));
-
           return (
             <div
               key={item.id}
-              style={{
-                width: `${chWidth}ch`,
-                maxWidth: '100%',
-              }}
-              className={`group relative flex flex-col p-2.5 bg-slate-900/90 border rounded-xl transition duration-100 shadow-xs space-y-1.5 ${
+              className={`group relative w-full flex flex-col p-3 bg-slate-900/80 hover:bg-slate-900 border rounded-xl transition duration-100 shadow-xs space-y-1.5 ${
                 isDirty 
                   ? 'border-amber-500/60 bg-slate-900' 
-                  : 'border-slate-800 hover:border-slate-700'
+                  : 'border-slate-800/90 hover:border-slate-700/80'
               }`}
             >
-              {/* Header row: Copy, Category Pill, Save (if modified), Small Delete */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-1 text-[11px]">
-                <div className="flex items-center gap-1.5">
+              {/* Top Line: [Copy] [Category] $ [Command Text] ... [Save] [Delete] */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 flex-1 min-w-0">
                   {/* 1-Click Copy Button */}
                   <button
                     type="button"
                     onClick={() => handleCopy(item.id, item.cmd)}
-                    className={`p-1 rounded text-slate-400 hover:text-white transition cursor-pointer ${
-                      isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'hover:bg-slate-800'
+                    className={`p-1.5 rounded-lg transition shrink-0 cursor-pointer ${
+                      isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                     title="Copy command"
                   >
@@ -446,64 +435,64 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                   </button>
 
                   {/* Category Badge */}
-                  <span className="px-1.5 py-0.2 bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded">
+                  <span className="self-start mt-0.5 px-2 py-0.5 bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded-md shrink-0">
                     {item.category || 'npm'}
                   </span>
+
+                  {/* $ Prompt */}
+                  <span className="text-slate-600 font-mono select-none text-sm font-bold shrink-0 self-start mt-0.5">$</span>
+
+                  {/* 1. Main Command: Bada Font & High Contrast Cyan */}
+                  <textarea
+                    value={item.cmd}
+                    rows={1}
+                    onChange={(e) => {
+                      handleCommandChange(item.id, e.target.value);
+                      autoResize(e.target);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleSaveSingleCommand(item.id);
+                      }
+                    }}
+                    placeholder="Command string..."
+                    className="flex-1 min-w-0 bg-transparent text-cyan-300 font-mono text-sm sm:text-base font-bold focus:outline-none resize-none overflow-hidden leading-snug tracking-tight py-0"
+                    style={{ height: 'auto', minHeight: '24px' }}
+                    ref={(el) => {
+                      if (el) autoResize(el);
+                    }}
+                  />
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  {/* Automatic SAVE button - Appears automatically only when edited! */}
+                {/* Right Action Buttons */}
+                <div className="flex items-center gap-1.5 shrink-0 self-start mt-0.5">
                   {isDirty && (
                     <button
                       type="button"
                       onClick={() => handleSaveSingleCommand(item.id)}
-                      className="h-5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs animate-in fade-in"
+                      className="h-6 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs animate-in fade-in"
                       title="Save this edit (Ctrl + Enter)"
                     >
-                      <Save className="w-2.5 h-2.5" />
+                      <Save className="w-3 h-3" />
                       <span>Save</span>
                     </button>
                   )}
 
-                  {/* Delete Icon: Ultra-small and very faded (feeka) */}
                   <button
                     type="button"
                     onClick={() => handleDeleteCommand(item.id)}
-                    className="p-1 text-slate-600 hover:text-red-400 opacity-20 group-hover:opacity-80 hover:!opacity-100 transition-opacity rounded cursor-pointer"
+                    className="p-1 text-slate-600 hover:text-red-400 opacity-25 group-hover:opacity-80 hover:!opacity-100 transition-opacity rounded cursor-pointer"
                     title="Delete command"
                   >
-                    <Trash2 className="w-2.5 h-2.5" />
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               </div>
 
-              {/* 1. Main Command: Bada Font & High Contrast Cyan */}
-              <div className="flex items-start gap-1.5">
-                <span className="text-slate-600 font-mono select-none text-sm font-semibold mt-0.5">$</span>
-                <textarea
-                  value={item.cmd}
-                  rows={1}
-                  onChange={(e) => {
-                    handleCommandChange(item.id, e.target.value);
-                    autoResize(e.target);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      handleSaveSingleCommand(item.id);
-                    }
-                  }}
-                  placeholder="Command string..."
-                  className="w-full bg-transparent text-cyan-300 font-mono text-sm font-bold focus:outline-none resize-none overflow-hidden leading-relaxed tracking-tight py-0"
-                  style={{ height: 'auto', minHeight: '26px' }}
-                  ref={(el) => {
-                    if (el) autoResize(el);
-                  }}
-                />
-              </div>
-
-              {/* 2. Comment: Just Neeche & Bahut Feeka (Muted Italic) */}
-              <div className="pt-0.5 border-t border-slate-800/40">
+              {/* 2. Comment: Directly underneath command (pl-9 to align with command text) */}
+              <div className="flex items-start gap-2 pl-9 sm:pl-10">
+                <span className="text-slate-700 font-mono text-xs select-none shrink-0 mt-0.5">#</span>
                 <textarea
                   rows={1}
                   value={item.description || ''}
@@ -517,9 +506,9 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                       handleSaveSingleCommand(item.id);
                     }
                   }}
-                  placeholder="comment (optional)..."
-                  className="w-full bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
-                  style={{ height: 'auto', minHeight: '20px' }}
+                  placeholder="comment / note (optional)..."
+                  className="flex-1 min-w-0 bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
+                  style={{ height: 'auto', minHeight: '18px' }}
                   ref={(el) => {
                     if (el) autoResize(el);
                   }}
@@ -529,61 +518,52 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           );
         })}
 
-        {/* Live Bottom Input Box: Dynamic Content-Width Card for Adding New Command */}
+        {/* Live Bottom Input Box: Clean Full-Width 2-Line Add Box */}
         <form
           onSubmit={handleAddNewCommand}
-          style={{
-            width: `${Math.min(105, Math.max(34, Math.max(newCmdText.length, newCmdComment.length) + 8))}ch`,
-            maxWidth: '100%',
-          }}
-          className="flex flex-col p-2.5 bg-slate-950 border border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-xl text-xs transition duration-150 shadow-inner space-y-1.5"
+          className="w-full flex flex-col p-3 bg-slate-950/90 border border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-xl text-xs transition duration-150 shadow-inner space-y-2"
         >
-          {/* Header Row in Add Form */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-900 pb-1 text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <span className="p-0.5 text-emerald-400">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <span className="p-1 text-emerald-400 shrink-0 mt-0.5">
                 <Plus className="w-3.5 h-3.5" />
               </span>
-              <span className="px-1.5 py-0.2 bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded">
+              <span className="self-start mt-0.5 px-2 py-0.5 bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded-md shrink-0">
                 {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
               </span>
+              <span className="text-slate-600 font-mono select-none text-sm font-bold shrink-0 self-start mt-0.5">$</span>
+              <textarea
+                ref={newCmdTextareaRef}
+                rows={1}
+                value={newCmdText}
+                onChange={(e) => {
+                  setNewCmdText(e.target.value);
+                  autoResize(e.target);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddNewCommand();
+                  }
+                }}
+                placeholder="Nayi command likhein (e.g. npm create vite@latest my-app)..."
+                className="flex-1 min-w-0 bg-transparent text-cyan-300 font-mono text-sm sm:text-base font-bold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-snug tracking-tight py-0"
+                style={{ height: 'auto', minHeight: '24px' }}
+              />
             </div>
 
             <button
               type="submit"
               disabled={!newCmdText.trim()}
-              className="h-5 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded text-[10px] font-medium flex items-center gap-1 transition cursor-pointer shadow-xs"
+              className="h-7 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0 self-start mt-0.5"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Add Command</span>
             </button>
           </div>
 
-          {/* New Command (Bada Font) */}
-          <div className="flex items-start gap-1.5">
-            <span className="text-slate-600 font-mono select-none text-sm font-semibold mt-0.5">$</span>
-            <textarea
-              ref={newCmdTextareaRef}
-              rows={1}
-              value={newCmdText}
-              onChange={(e) => {
-                setNewCmdText(e.target.value);
-                autoResize(e.target);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleAddNewCommand();
-                }
-              }}
-              placeholder="Nayi command likhein (e.g. npm init -y)..."
-              className="w-full bg-transparent text-cyan-300 font-mono text-sm font-bold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-relaxed tracking-tight py-0"
-              style={{ height: 'auto', minHeight: '26px' }}
-            />
-          </div>
-
-          {/* New Comment (Just Neeche, Bahut Feeka) */}
-          <div className="pt-0.5 border-t border-slate-900">
+          <div className="flex items-start gap-2 pl-9 sm:pl-10">
+            <span className="text-slate-700 font-mono text-xs select-none shrink-0 mt-0.5">#</span>
             <textarea
               rows={1}
               value={newCmdComment}
@@ -598,8 +578,8 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                 }
               }}
               placeholder="comment / note (optional)..."
-              className="w-full bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
-              style={{ height: 'auto', minHeight: '20px' }}
+              className="flex-1 min-w-0 bg-transparent text-xs italic text-slate-500 focus:text-slate-300 placeholder-slate-700/80 focus:outline-none resize-none overflow-hidden leading-relaxed py-0"
+              style={{ height: 'auto', minHeight: '18px' }}
             />
           </div>
         </form>
