@@ -329,36 +329,36 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 key={msg.id}
                 className="group relative w-full bg-slate-950/90 hover:bg-slate-950 border border-slate-800 hover:border-slate-700/90 rounded-xl p-3 shadow-sm transition duration-150 text-slate-200"
               >
-                {/* Header of the message box: Timestamp + Action Buttons (Copy + Cross X) */}
+                {/* Header of the message box: Cross (X) on the LEFT, Copy on the RIGHT */}
                 <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-900 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1.5">
+                  {/* Left: Cross (X) Delete Icon & Timestamp */}
+                  <div className="flex items-center gap-2">
+                    {/* Cross (X) to delete this message box on the LEFT side */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      className="p-0.5 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition cursor-pointer"
+                      title="Delete this message box"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <span className="font-mono text-[10px] text-slate-500">{msg.timestamp}</span>
                     <span className="text-[10px] text-slate-600">#{index + 1}</span>
                   </div>
 
-                  {/* Actions: Copy & Cross (X) Delete */}
-                  <div className="flex items-center gap-1">
-                    {/* 1-Click Copy */}
+                  {/* Right: 1-Click Copy Button */}
+                  <div>
                     <button
                       type="button"
                       onClick={() => handleCopyMessage(msg.id, msg.text)}
-                      className={`p-1 rounded transition ${
+                      className={`p-1 rounded transition cursor-pointer ${
                         isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'text-slate-400 hover:text-white hover:bg-slate-800'
                       }`}
                       title="Copy text"
                     >
                       {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-
-                    {/* Cross (X) to delete this message box as explicitly asked */}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-950/40 transition cursor-pointer"
-                      title="Is message box ko delete (cross) karein"
-                    >
-                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

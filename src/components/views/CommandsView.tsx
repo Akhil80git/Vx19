@@ -454,16 +454,22 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                   }
                 }}
                 placeholder="Command string..."
-                className="flex-1 min-w-0 bg-transparent text-emerald-300 font-mono text-xs focus:outline-none resize-none overflow-hidden leading-relaxed py-0.5"
-                style={{ height: 'auto', minHeight: '26px' }}
+                className="min-w-0 bg-transparent text-cyan-300 font-mono text-xs font-semibold focus:outline-none resize-none overflow-hidden leading-relaxed py-0.5 tracking-tight"
+                style={{ 
+                  width: `${Math.min(95, Math.max(16, (item.cmd.length || 8) + 2))}ch`, 
+                  maxWidth: '100%', 
+                  minWidth: '12ch',
+                  height: 'auto', 
+                  minHeight: '26px' 
+                }}
                 ref={(el) => {
                   if (el) autoResize(el);
                 }}
               />
 
-              {/* 5. Optional Inline Comment Input */}
-              <div className="flex items-center gap-1 max-w-[180px] sm:max-w-[260px] shrink-0 border-l border-slate-800 pl-2 self-start mt-1">
-                <span className="text-slate-600 font-mono text-[11px] select-none">#</span>
+              {/* 5. Optional Inline Comment Input (Feeka / Muted so focus stays on command) */}
+              <div className="flex items-center gap-1 max-w-[180px] sm:max-w-[260px] shrink-0 border-l border-slate-800/60 pl-2 self-start mt-1">
+                <span className="text-slate-700 font-mono text-[10px] select-none">#</span>
                 <input
                   type="text"
                   value={item.description || ''}
@@ -474,7 +480,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                     }
                   }}
                   placeholder="comment (optional)"
-                  className="w-full bg-transparent text-[11px] text-slate-400 focus:text-slate-200 placeholder-slate-600 focus:outline-none truncate"
+                  className="w-full bg-transparent text-[11px] italic text-slate-600 focus:text-slate-400 placeholder-slate-700/80 focus:outline-none truncate"
                 />
               </div>
 
@@ -491,14 +497,14 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                 </button>
               )}
 
-              {/* 7. Minor Delete Icon at the very end of the row */}
+              {/* 7. Delete Icon: Ultra-small and very faded (feeka) */}
               <button
                 type="button"
                 onClick={() => handleDeleteCommand(item.id)}
-                className="p-1 text-slate-500 hover:text-red-400 opacity-60 group-hover:opacity-100 rounded hover:bg-slate-800 transition cursor-pointer shrink-0 self-start mt-0.5"
+                className="p-0.5 text-slate-600 hover:text-red-400 opacity-25 hover:opacity-100 transition-opacity rounded cursor-pointer shrink-0 self-start mt-1.5 ml-auto"
                 title="Delete command"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-2.5 h-2.5" />
               </button>
             </div>
           );
@@ -537,19 +543,19 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
               }
             }}
             placeholder="Nayi command likhein aur Enter dabayein..."
-            className="flex-1 min-w-0 bg-transparent text-emerald-300 font-mono text-xs focus:outline-none placeholder-slate-500 resize-none overflow-hidden leading-relaxed py-0.5"
+            className="flex-1 min-w-0 bg-transparent text-cyan-300 font-mono text-xs font-semibold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-relaxed py-0.5 tracking-tight"
             style={{ height: 'auto', minHeight: '26px' }}
           />
 
-          {/* New Comment Input */}
-          <div className="flex items-center gap-1 max-w-[160px] sm:max-w-[220px] shrink-0 border-l border-slate-800 pl-2 self-start mt-1">
-            <span className="text-slate-600 font-mono text-[11px] select-none">#</span>
+          {/* New Comment Input (Feeka) */}
+          <div className="flex items-center gap-1 max-w-[160px] sm:max-w-[220px] shrink-0 border-l border-slate-800/60 pl-2 self-start mt-1">
+            <span className="text-slate-700 font-mono text-[10px] select-none">#</span>
             <input
               type="text"
               value={newCmdComment}
               onChange={(e) => setNewCmdComment(e.target.value)}
               placeholder="comment (optional)"
-              className="w-full bg-transparent text-[11px] text-slate-400 placeholder-slate-600 focus:outline-none truncate"
+              className="w-full bg-transparent text-[11px] italic text-slate-600 focus:text-slate-400 placeholder-slate-700/80 focus:outline-none truncate"
             />
           </div>
 

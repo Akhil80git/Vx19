@@ -161,11 +161,18 @@ export const StructureView: React.FC<StructureViewProps> = ({
   const [newStructureDesc, setNewStructureDesc] = useState('');
   const [newStructureTemplate, setNewStructureTemplate] = useState<'react' | 'blank'>('react');
 
-  // Node adding inside a folder
+  // Node adding modal state
+  const [isAddingNode, setIsAddingNode] = useState(false);
   const [targetFolderId, setTargetFolderId] = useState<string | null>(null);
+  const [targetFolderName, setTargetFolderName] = useState<string>('Root (/)');
   const [newNodeName, setNewNodeName] = useState('');
   const [newNodeType, setNewNodeType] = useState<'folder' | 'file'>('file');
   const [newNodeDesc, setNewNodeDesc] = useState('');
+
+  // Inline quick create structure state
+  const [showQuickAddStruct, setShowQuickAddStruct] = useState(false);
+  const [quickStructName, setQuickStructName] = useState('');
+  const [quickStructType, setQuickStructType] = useState<'blank' | 'react'>('blank');
 
   // Expanded folders set
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
@@ -307,9 +314,35 @@ export const StructureView: React.FC<StructureViewProps> = ({
       setExpandedFolders(prev => ({ ...prev, [targetFolderId]: true }));
     }
 
+    setIsAddingNode(false);
     setTargetFolderId(null);
     setNewNodeName('');
     setNewNodeDesc('');
+  };
+
+  // Quick inline add structure
+  const handleQuickAddStructure = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickStructName.trim()) return;
+
+    const newStruct: StructureModel = {
+      id: 'struct_' + Date.now(),
+      name: quickStructName.trim(),
+      description: undefined,
+      tree: quickStructType === 'react' ? DEFAULT_ROOT_NODES : []
+    };
+
+    const updated = [...structures, newStruct];
+    setStructures(updated);
+    setActiveStructureId(newStruct.id);
+    setShowQuickAddStruct(false);
+    setQuickStructName('');
+
+    onUpdateProject({
+      ...project,
+      structures: updated,
+      updatedAt: new Date().toISOString()
+    });
   };
 
   // Recursively delete a node
@@ -460,7 +493,11 @@ echo "Done! Project structure created."
                       <button
                         onClick={() => {
                           setTargetFolderId(node.id);
+                          setTargetFolderName(node.name);
                           setNewNodeType('file');
+                          setNewNodeName('');
+                          setNewNodeDesc('');
+                          setIsAddingNode(true);
                         }}
                         className="py-1 px-2 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1 transition cursor-pointer"
                         title="Add file inside this folder"
@@ -471,7 +508,11 @@ echo "Done! Project structure created."
                       <button
                         onClick={() => {
                           setTargetFolderId(node.id);
+                          setTargetFolderName(node.name);
                           setNewNodeType('folder');
+                          setNewNodeName('');
+                          setNewNodeDesc('');
+                          setIsAddingNode(true);
                         }}
                         className="py-1 px-2 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1 transition cursor-pointer"
                         title="Add sub-folder inside this folder"
@@ -506,73 +547,71 @@ echo "Done! Project structure created."
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-in fade-in duration-200">
+    <div className="space-y-3 max-w-6xl mx-auto pb-12 animate-in fade-in duration-200">
       
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg shadow-black/20">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-              <FolderTree className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                Folder Structure Architect
-              </h1>
-              <p className="text-xs text-slate-400">
-                Ek hi project me alag-alag structures banayein aur visually connected branches me files & folders organize karein
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Top Single Unified Row: + Button, Inline New Struct Input, All Struct Tabs in SAME ROW, and Root Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-800/80">
+        
+        {/* Left Side: + Icon & All Structures as Pills in the same row! */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 flex-nowrap">
+          {/* + Button for New Structure */}
+          {showQuickAddStruct ? (
+            <form onSubmit={handleQuickAddStructure} className="flex items-center gap-1 bg-slate-900 border border-emerald-500/60 rounded-xl px-2.5 py-1 shrink-0">
+              <input
+                type="text"
+                value={quickStructName}
+                onChange={(e) => setQuickStructName(e.target.value)}
+                placeholder="Structure name (backend, frontend)..."
+                autoFocus
+                className="w-36 sm:w-44 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+              />
+              <select
+                value={quickStructType}
+                onChange={(e) => setQuickStructType(e.target.value as 'blank' | 'react')}
+                className="bg-slate-950 text-[10px] text-emerald-400 border border-slate-700 rounded px-1.5 py-0.5 focus:outline-none"
+              >
+                <option value="blank">Clean Blank (0 files)</option>
+                <option value="react">Starter Template</option>
+              </select>
+              <button
+                type="submit"
+                disabled={!quickStructName.trim()}
+                className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40 p-0.5 cursor-pointer"
+                title="Create structure"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowQuickAddStruct(false); setQuickStructName(''); }}
+                className="text-slate-400 hover:text-white p-0.5 cursor-pointer"
+                title="Cancel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setShowQuickAddStruct(true)}
+              className="h-8 px-2.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+              title="Add New Structure"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden xs:inline">Structure</span>
+            </button>
+          )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Add Multiple Structure Button */}
-          <button
-            onClick={() => setShowNewStructureModal(true)}
-            className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-950/40"
-            title="Is project me ek aur naya folder structure banayein"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Naya Structure Banayein</span>
-          </button>
-
-          {/* Copy Tree Text */}
-          <button
-            onClick={handleCopyAscii}
-            className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center gap-1.5 transition border border-slate-700 cursor-pointer"
-            title="ASCII Tree text copy karein"
-          >
-            {copiedAscii ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>Copy Tree</span>
-          </button>
-
-          {/* Copy Bash Script */}
-          <button
-            onClick={handleCopyBash}
-            className="py-2 px-3 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition border border-cyan-500/30 cursor-pointer"
-            title="Terminal me folder banane wala bash script copy karein"
-          >
-            {copiedBash ? <Check className="w-3.5 h-3.5 text-cyan-400" /> : <Terminal className="w-3.5 h-3.5" />}
-            <span>Copy Bash Script</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Multiple Structures Tab Bar (User can create multiple structures in 1 project!) */}
-      <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
-        <div className="flex items-center gap-2">
+          {/* All Existing Structures as Pills in the exact same row! */}
           {structures.map((s) => {
             const isActive = s.id === activeStructure.id;
             return (
               <div
                 key={s.id}
                 onClick={() => setActiveStructureId(s.id)}
-                className={`group px-3.5 py-2 rounded-xl font-medium flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                className={`group h-8 px-3 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
                   isActive
-                    ? 'bg-slate-800 text-emerald-300 border border-emerald-500/50 shadow-sm'
-                    : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    ? 'bg-slate-800 text-emerald-300 border border-emerald-500/60 shadow-sm'
+                    : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <FolderTree className="w-3.5 h-3.5" />
@@ -585,7 +624,7 @@ echo "Done! Project structure created."
                     className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition ml-1 p-0.5"
                     title={`Delete structure "${s.name}"`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-2.5 h-2.5" />
                   </button>
                 )}
               </div>
@@ -593,56 +632,81 @@ echo "Done! Project structure created."
           })}
         </div>
 
-        {/* View mode toggle: Visual Connected Tree vs Raw ASCII Tree */}
-        <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl shrink-0">
-          <button
-            onClick={() => setViewMode('visual')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
-              viewMode === 'visual' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Visual Connected Tree
-          </button>
-          <button
-            onClick={() => setViewMode('ascii')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
-              viewMode === 'ascii' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            ASCII Text Preview
-          </button>
-        </div>
-      </div>
-
-      {/* Structure Description & Quick Root Add Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 border border-slate-800/80 p-3.5 rounded-2xl">
-        <div className="text-xs text-slate-400">
-          Current Structure: <strong className="text-white">{activeStructure.name}</strong>
-          {activeStructure.description && <span> • {activeStructure.description}</span>}
-        </div>
-
-        {/* Root level add buttons */}
-        <div className="flex items-center gap-2">
+        {/* Right Side: + Root Folder, + Root File, Copy Tree, Copy Script, View Toggle */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
+          {/* + Root Folder */}
           <button
             onClick={() => {
               setTargetFolderId(null);
+              setTargetFolderName('Root (/)');
               setNewNodeType('folder');
+              setNewNodeName('');
+              setNewNodeDesc('');
+              setIsAddingNode(true);
             }}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center gap-1.5 transition border border-slate-700 cursor-pointer"
+            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            title="Create root folder"
           >
             <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
             <span>+ Root Folder</span>
           </button>
+
+          {/* + Root File */}
           <button
             onClick={() => {
               setTargetFolderId(null);
+              setTargetFolderName('Root (/)');
               setNewNodeType('file');
+              setNewNodeName('');
+              setNewNodeDesc('');
+              setIsAddingNode(true);
             }}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center gap-1.5 transition border border-slate-700 cursor-pointer"
+            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            title="Create root file"
           >
             <FilePlus className="w-3.5 h-3.5 text-emerald-400" />
             <span>+ Root File</span>
           </button>
+
+          {/* Copy Tree Text */}
+          <button
+            onClick={handleCopyAscii}
+            className="h-8 px-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            title="Copy ASCII Tree text"
+          >
+            {copiedAscii ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            <span className="hidden md:inline">Tree</span>
+          </button>
+
+          {/* Copy Bash Script */}
+          <button
+            onClick={handleCopyBash}
+            className="h-8 px-2.5 bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+            title="Copy Bash mkdir script"
+          >
+            {copiedBash ? <Check className="w-3 h-3 text-cyan-400" /> : <Terminal className="w-3 h-3" />}
+            <span className="hidden md:inline">Bash</span>
+          </button>
+
+          {/* Visual / ASCII toggle */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 p-0.5 rounded-xl">
+            <button
+              onClick={() => setViewMode('visual')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                viewMode === 'visual' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Tree
+            </button>
+            <button
+              onClick={() => setViewMode('ascii')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                viewMode === 'ascii' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              ASCII
+            </button>
+          </div>
         </div>
       </div>
 
@@ -653,11 +717,38 @@ echo "Done! Project structure created."
             <div className="p-10 text-center text-slate-400 space-y-3">
               <FolderTree className="w-10 h-10 text-slate-600 mx-auto" />
               <p className="text-xs font-medium text-slate-300">
-                Yeh structure abhi bilkul khali hai.
+                Yeh structure abhi bilkul khali (clean blank) hai.
               </p>
-              <p className="text-[11px] text-slate-500">
-                Upar diye gaye "+ Root Folder" ya "+ Root File" par click karke shuruat karein.
-              </p>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setTargetFolderId(null);
+                    setTargetFolderName('Root (/)');
+                    setNewNodeType('folder');
+                    setNewNodeName('');
+                    setNewNodeDesc('');
+                    setIsAddingNode(true);
+                  }}
+                  className="py-1.5 px-3 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                  <span>+ Add First Root Folder</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setTargetFolderId(null);
+                    setTargetFolderName('Root (/)');
+                    setNewNodeType('file');
+                    setNewNodeName('');
+                    setNewNodeDesc('');
+                    setIsAddingNode(true);
+                  }}
+                  className="py-1.5 px-3 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <FilePlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+ Add First Root File</span>
+                </button>
+              </div>
             </div>
           ) : (
             renderConnectedTree(activeStructure.tree)
@@ -682,18 +773,20 @@ echo "Done! Project structure created."
         </div>
       )}
 
-      {/* Modal: Add File or Folder */}
-      {(targetFolderId !== null || newNodeType) && (targetFolderId !== null || (newNodeName !== '' || false)) && (
+      {/* Modal: Add File or Folder (Works 100% reliably for Root & Nested folders) */}
+      {isAddingNode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-100 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 {newNodeType === 'folder' ? <FolderPlus className="w-5 h-5 text-amber-400" /> : <FilePlus className="w-5 h-5 text-emerald-400" />}
-                {newNodeType === 'folder' ? 'Add Folder' : 'Add File'} {targetFolderId ? 'Inside Folder' : 'At Root Level'}
+                <span>
+                  Add {newNodeType === 'folder' ? 'Folder' : 'File'} {targetFolderId ? `in "${targetFolderName}"` : 'at Root Level (/)'}
+                </span>
               </h3>
               <button
-                onClick={() => setTargetFolderId(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                onClick={() => setIsAddingNode(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -702,13 +795,15 @@ echo "Done! Project structure created."
             <form onSubmit={handleAddNodeSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-300 mb-1">
-                  {newNodeType === 'folder' ? 'Folder Name (e.g. components, utils, api)' : 'File Name (e.g. Button.tsx, schema.ts, db.json)'}
+                  {newNodeType === 'folder' 
+                    ? (targetFolderId ? 'Sub-Folder Name (e.g. components, utils, routes)' : 'Root Folder Name (e.g. backend, frontend, docs, server)')
+                    : (targetFolderId ? 'File Name (e.g. Button.tsx, controller.ts)' : 'Root File Name (e.g. package.json, README.md, .env)')}
                 </label>
                 <input
                   type="text"
                   value={newNodeName}
                   onChange={(e) => setNewNodeName(e.target.value)}
-                  placeholder={newNodeType === 'folder' ? 'e.g. services' : 'e.g. auth.service.ts'}
+                  placeholder={newNodeType === 'folder' ? (targetFolderId ? 'e.g. services' : 'e.g. backend') : (targetFolderId ? 'e.g. auth.service.ts' : 'e.g. package.json')}
                   autoFocus
                   required
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -723,7 +818,7 @@ echo "Done! Project structure created."
                   type="text"
                   value={newNodeDesc}
                   onChange={(e) => setNewNodeDesc(e.target.value)}
-                  placeholder="e.g. Handles JWT tokens & session verification"
+                  placeholder="e.g. Express server or UI components"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -731,7 +826,7 @@ echo "Done! Project structure created."
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setTargetFolderId(null)}
+                  onClick={() => setIsAddingNode(false)}
                   className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition cursor-pointer"
                 >
                   Cancel
