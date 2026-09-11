@@ -13,7 +13,10 @@ import {
   Layers,
   Cloud,
   RefreshCw,
-  Save
+  Save,
+  Palette,
+  GitBranch,
+  Code2
 } from 'lucide-react';
 
 interface CommandsViewProps {
@@ -22,6 +25,89 @@ interface CommandsViewProps {
 }
 
 const DEFAULT_CATEGORIES = ['npm', 'db', 'folder', 'git', 'docker', 'dev'];
+
+// Distinct, subtle ("feeke") color palettes for each category
+export function getCategoryStyle(cat: string) {
+  const c = (cat || '').toLowerCase().trim();
+  switch (c) {
+    case 'npm':
+      return {
+        pill: 'bg-rose-950/30 text-rose-300 border-rose-900/40 hover:bg-rose-950/60',
+        active: 'bg-rose-950/90 text-rose-200 border-rose-500/80 shadow-xs shadow-rose-950/60 ring-1 ring-rose-500/50',
+        badge: 'bg-rose-950/40 text-rose-300 border-rose-800/50',
+      };
+    case 'db':
+      return {
+        pill: 'bg-amber-950/30 text-amber-300 border-amber-900/40 hover:bg-amber-950/60',
+        active: 'bg-amber-950/90 text-amber-200 border-amber-500/80 shadow-xs shadow-amber-950/60 ring-1 ring-amber-500/50',
+        badge: 'bg-amber-950/40 text-amber-300 border-amber-800/50',
+      };
+    case 'folder':
+      return {
+        pill: 'bg-blue-950/30 text-blue-300 border-blue-900/40 hover:bg-blue-950/60',
+        active: 'bg-blue-950/90 text-blue-200 border-blue-500/80 shadow-xs shadow-blue-950/60 ring-1 ring-blue-500/50',
+        badge: 'bg-blue-950/40 text-blue-300 border-blue-800/50',
+      };
+    case 'git':
+      return {
+        pill: 'bg-orange-950/30 text-orange-300 border-orange-900/40 hover:bg-orange-950/60',
+        active: 'bg-orange-950/90 text-orange-200 border-orange-500/80 shadow-xs shadow-orange-950/60 ring-1 ring-orange-500/50',
+        badge: 'bg-orange-950/40 text-orange-300 border-orange-800/50',
+      };
+    case 'docker':
+      return {
+        pill: 'bg-sky-950/30 text-sky-300 border-sky-900/40 hover:bg-sky-950/60',
+        active: 'bg-sky-950/90 text-sky-200 border-sky-500/80 shadow-xs shadow-sky-950/60 ring-1 ring-sky-500/50',
+        badge: 'bg-sky-950/40 text-sky-300 border-sky-800/50',
+      };
+    case 'dev':
+      return {
+        pill: 'bg-purple-950/30 text-purple-300 border-purple-900/40 hover:bg-purple-950/60',
+        active: 'bg-purple-950/90 text-purple-200 border-purple-500/80 shadow-xs shadow-purple-950/60 ring-1 ring-purple-500/50',
+        badge: 'bg-purple-950/40 text-purple-300 border-purple-800/50',
+      };
+    case 'dependencies':
+      return {
+        pill: 'bg-emerald-950/30 text-emerald-300 border-emerald-900/40 hover:bg-emerald-950/60',
+        active: 'bg-emerald-950/90 text-emerald-200 border-emerald-500/80 shadow-xs shadow-emerald-950/60 ring-1 ring-emerald-500/50',
+        badge: 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50',
+      };
+    default: {
+      const hues = [
+        {
+          pill: 'bg-teal-950/30 text-teal-300 border-teal-900/40 hover:bg-teal-950/60',
+          active: 'bg-teal-950/90 text-teal-200 border-teal-500/80 ring-1 ring-teal-500/50',
+          badge: 'bg-teal-950/40 text-teal-300 border-teal-800/50',
+        },
+        {
+          pill: 'bg-indigo-950/30 text-indigo-300 border-indigo-900/40 hover:bg-indigo-950/60',
+          active: 'bg-indigo-950/90 text-indigo-200 border-indigo-500/80 ring-1 ring-indigo-500/50',
+          badge: 'bg-indigo-950/40 text-indigo-300 border-indigo-800/50',
+        },
+        {
+          pill: 'bg-fuchsia-950/30 text-fuchsia-300 border-fuchsia-900/40 hover:bg-fuchsia-950/60',
+          active: 'bg-fuchsia-950/90 text-fuchsia-200 border-fuchsia-500/80 ring-1 ring-fuchsia-500/50',
+          badge: 'bg-fuchsia-950/40 text-fuchsia-300 border-fuchsia-800/50',
+        }
+      ];
+      let hash = 0;
+      for (let i = 0; i < c.length; i++) hash = c.charCodeAt(i) + ((hash << 5) - hash);
+      return hues[Math.abs(hash) % hues.length];
+    }
+  }
+}
+
+// Command text color presets
+export const COMMAND_COLOR_OPTIONS = [
+  { id: 'cyan', label: 'Cyan', class: 'text-cyan-300', bg: 'bg-cyan-400' },
+  { id: 'emerald', label: 'Green', class: 'text-emerald-300', bg: 'bg-emerald-400' },
+  { id: 'amber', label: 'Yellow', class: 'text-amber-300', bg: 'bg-amber-400' },
+  { id: 'sky', label: 'Sky Blue', class: 'text-sky-300', bg: 'bg-sky-400' },
+  { id: 'rose', label: 'Rose Pink', class: 'text-rose-300', bg: 'bg-rose-400' },
+  { id: 'violet', label: 'Violet', class: 'text-violet-300', bg: 'bg-violet-400' },
+  { id: 'orange', label: 'Orange', class: 'text-orange-300', bg: 'bg-orange-400' },
+  { id: 'white', label: 'White', class: 'text-slate-100', bg: 'bg-slate-100' },
+];
 
 export const CommandsView: React.FC<CommandsViewProps> = ({
   project,
@@ -47,6 +133,12 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
   const [copiedAll, setCopiedAll] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+
+  // Command text color preference (applies to all commands simultaneously)
+  const [cmdColor, setCmdColor] = useState<string>(() => {
+    return localStorage.getItem('commands_custom_color') || 'text-cyan-300';
+  });
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // New Category input toggle
   const [showAddCat, setShowAddCat] = useState(false);
@@ -317,19 +409,18 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
             <span className="text-[10px] opacity-75 font-mono">({commands.length})</span>
           </button>
 
-          {/* Dynamic Category Tabs */}
+          {/* Dynamic Category Tabs with Feeke (subtle pastel) distinct colors */}
           {categories.map((cat) => {
             const count = commands.filter(c => (c.category || '').toLowerCase() === cat.toLowerCase()).length;
             const isActive = activeCategory === cat;
+            const style = getCategoryStyle(cat);
 
             return (
               <div
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`group h-7 px-2.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                  isActive
-                    ? 'bg-slate-800 text-emerald-300 border border-emerald-500/60 shadow-sm'
-                    : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                className={`group h-7 px-2.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
+                  isActive ? style.active : style.pill
                 }`}
               >
                 {getCategoryIcon(cat)}
@@ -349,6 +440,57 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
               </div>
             );
           })}
+
+          {/* Command Color Setting Dropdown right next to categories! */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className="h-7 px-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-lg text-xs font-medium text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+              title="Command Text Color Chunein (Ek saath sabhi commands change honge)"
+            >
+              <Palette className="w-3.5 h-3.5 text-slate-400" />
+              <span className={`w-2.5 h-2.5 rounded-full ${COMMAND_COLOR_OPTIONS.find(c => c.class === cmdColor)?.bg || 'bg-cyan-400'}`} />
+              <span className="hidden sm:inline text-[11px] font-mono">Color</span>
+            </button>
+
+            {showColorPicker && (
+              <div className="absolute left-0 mt-1.5 p-2.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 w-56 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2 pb-1 border-b border-slate-800 flex items-center justify-between">
+                  <span>Command Color</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowColorPicker(false)} 
+                    className="text-slate-500 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {COMMAND_COLOR_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setCmdColor(opt.class);
+                        localStorage.setItem('commands_custom_color', opt.class);
+                        setShowColorPicker(false);
+                      }}
+                      className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-mono transition text-left cursor-pointer ${
+                        cmdColor === opt.class ? 'bg-slate-800 font-bold ring-1 ring-emerald-500/50' : 'hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${opt.bg} shrink-0`} />
+                      <span className={`${opt.class} text-[11px]`}>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 leading-tight">
+                  * Sabhi commands ka color ek saath badal jayega. Comment aur category par asar nahi hoga.
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Side: Sync Button, Copy Script */}
@@ -413,6 +555,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           const commentLength = (item.description || '').length;
           const maxLen = Math.max(cmdLength, commentLength);
           const dynamicCh = Math.min(78, Math.max(16, maxLen + 3));
+          const catStyle = getCategoryStyle(item.category || 'npm');
 
           return (
             <div
@@ -435,8 +578,8 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                 {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
 
-              {/* 2. Bagal mai Name (Category badge: NPM, DB, etc.) */}
-              <span className="self-start mt-1 px-2 py-0.5 bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded-md shrink-0">
+              {/* 2. Bagal mai Name (Category badge: NPM, DB, etc. with distinct feeka color) */}
+              <span className={`self-start mt-1 px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${catStyle.badge}`}>
                 {item.category || 'npm'}
               </span>
 
@@ -448,7 +591,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                   maxWidth: '100%',
                 }}
               >
-                {/* Command: Bada Large Font, High Contrast Cyan */}
+                {/* Command: Bada Large Font, Customizable Color */}
                 <div className="flex items-start gap-1.5">
                   <span className="text-slate-600 font-mono select-none text-base font-bold shrink-0 self-start mt-0.5">$</span>
                   <textarea
@@ -465,7 +608,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                       }
                     }}
                     placeholder="Command string..."
-                    className="w-full bg-transparent text-cyan-300 font-mono text-base font-bold focus:outline-none resize-none overflow-hidden leading-snug tracking-tight py-0"
+                    className={`w-full bg-transparent ${cmdColor} font-mono text-base font-bold focus:outline-none resize-none overflow-hidden leading-snug tracking-tight py-0`}
                     style={{ height: 'auto', minHeight: '24px' }}
                     ref={(el) => {
                       if (el) autoResize(el);
@@ -535,7 +678,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
             <Plus className="w-3.5 h-3.5" />
           </span>
 
-          <span className="self-start mt-1 px-2 py-0.5 bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded-md shrink-0">
+          <span className={`self-start mt-1 px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${getCategoryStyle(activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')).badge}`}>
             {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
           </span>
 
@@ -563,7 +706,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                   }
                 }}
                 placeholder="Nayi command likhein..."
-                className="w-full bg-transparent text-cyan-300 font-mono text-base font-bold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-snug tracking-tight py-0"
+                className={`w-full bg-transparent ${cmdColor} font-mono text-base font-bold focus:outline-none placeholder-slate-600 resize-none overflow-hidden leading-snug tracking-tight py-0`}
                 style={{ height: 'auto', minHeight: '24px' }}
               />
             </div>

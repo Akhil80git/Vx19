@@ -431,9 +431,9 @@ echo "Done! Project structure created."
                 <div className="absolute -left-5 top-4 w-4 h-px bg-slate-800 pointer-events-none group-hover:bg-slate-700 transition-colors" />
               )}
 
-              {/* Node Card Row */}
+              {/* Node Card Row: Dynamic content width */}
               <div 
-                className={`flex items-center justify-between p-2 rounded-xl transition select-none ${
+                className={`w-fit min-w-[260px] sm:min-w-[340px] max-w-full flex items-center justify-between gap-4 p-2 rounded-xl transition select-none ${
                   isFolder 
                     ? 'bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-100' 
                     : 'bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-slate-200'

@@ -126,6 +126,29 @@ export function App() {
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
+  // Theme state: 'dark' or 'light'
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('app_theme', next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+    }
+  }, [theme]);
+
   // 1. Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = subscribeToAuth((currentUser) => {
@@ -368,9 +391,9 @@ service cloud.firestore {
 
   // Logged in user dashboard
   return (
-    <div className="h-screen max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans">
+    <div className={`h-screen max-h-screen overflow-hidden flex flex-col ${theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-slate-950 text-slate-100'} font-sans`}>
       
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar with Dark/Light Toggle */}
       <Navbar
         user={user}
         projects={projects}
@@ -378,6 +401,8 @@ service cloud.firestore {
         onSelectProject={handleSelectProject}
         onNewProject={handleNewProject}
         onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Optional Firestore Rules Notice Banner if console permissions are restricted */}
@@ -416,10 +441,11 @@ service cloud.firestore {
           projectCount={projects.length}
           apiCount={activeProject?.apiEndpoints?.length || 0}
           commandCount={activeProject?.commands?.length || 0}
+          theme={theme}
         />
 
         {/* Content Area (Only this right area scrolls) */}
-        <main className="flex-1 h-full overflow-y-auto min-h-0 p-2.5 sm:p-3 md:p-4 relative">
+        <main className={`flex-1 h-full overflow-y-auto min-h-0 p-2.5 sm:p-3 md:p-4 relative ${theme === 'light' ? 'bg-slate-100' : 'bg-slate-950'}`}>
           
           {/* Live Notification Banner */}
           {statusNotification && (

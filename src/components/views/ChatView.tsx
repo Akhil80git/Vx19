@@ -309,10 +309,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      {/* Main Messages Area: Full Width Message Boxes with Cross (X) Icon */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
+      {/* Main Messages Area: Dynamic Content-Width Message Boxes */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col items-start space-y-2.5">
         {(!activeSession || activeSession.messages.length === 0) ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-2">
+          <div className="h-full w-full flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-2">
             <MessageSquare className="w-10 h-10 text-slate-700 mx-auto" />
             <p className="text-sm font-medium text-slate-400">Yeh Chat khali hai</p>
             <p className="text-xs text-slate-500 max-w-sm">
@@ -324,13 +324,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
             const isCopied = copiedMsgId === msg.id;
 
             return (
-              /* FULL WIDTH MESSAGE BOX with Cross (X) delete button */
+              /* DYNAMIC CONTENT-WIDTH MESSAGE BOX */
               <div
                 key={msg.id}
-                className="group relative w-full bg-slate-950/90 hover:bg-slate-950 border border-slate-800 hover:border-slate-700/90 rounded-xl p-3 shadow-sm transition duration-150 text-slate-200"
+                className="group relative w-fit min-w-[220px] max-w-[95%] sm:max-w-[80%] bg-slate-950/90 hover:bg-slate-950 border border-slate-800 hover:border-slate-700/90 rounded-xl p-3 shadow-sm transition duration-150 text-slate-200"
               >
                 {/* Header of the message box: Cross (X) on the LEFT, Copy on the RIGHT */}
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-900 text-[11px] text-slate-400">
+                <div className="flex items-center justify-between gap-4 pb-1.5 mb-1.5 border-b border-slate-900 text-[11px] text-slate-400">
                   {/* Left: Cross (X) Delete Icon & Timestamp */}
                   <div className="flex items-center gap-2">
                     {/* Cross (X) to delete this message box on the LEFT side */}
@@ -363,7 +363,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 </div>
 
-                {/* Message Content (Full Width) */}
+                {/* Message Content (Auto height & content wrap) */}
                 <div className="font-sans text-xs sm:text-sm text-slate-100 whitespace-pre-wrap break-words leading-relaxed select-text">
                   {msg.text}
                 </div>

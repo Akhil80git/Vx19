@@ -21,6 +21,7 @@ interface SidebarProps {
   projectCount: number;
   apiCount: number;
   commandCount: number;
+  theme?: 'dark' | 'light';
 }
 
 interface NavItem {
@@ -37,8 +38,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   projectCount,
   apiCount,
-  commandCount
+  commandCount,
+  theme = 'dark'
 }) => {
+  const isLight = theme === 'light';
+
   const navItems: NavItem[] = [
     {
       id: 'overview',
@@ -106,16 +110,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="shrink-0 h-full overflow-hidden z-20 bg-slate-900/95 border-r border-slate-800 flex flex-col justify-between select-none
-      w-14 sm:w-16 md:w-64 transition-all duration-200"
+    <aside className={`shrink-0 h-full overflow-hidden z-20 ${
+      isLight 
+        ? 'bg-slate-50 border-r border-slate-200 text-slate-800' 
+        : 'bg-slate-900/95 border-r border-slate-800 text-slate-200'
+    } flex flex-col justify-between select-none w-14 sm:w-16 md:w-64 transition-all duration-200`}
     >
       {/* Top Header / Brand indication */}
-      <div className="p-2 sm:p-3 md:p-4 border-b border-slate-800/80 flex items-center justify-center md:justify-start gap-2.5">
+      <div className={`p-2 sm:p-3 md:p-4 border-b ${isLight ? 'border-slate-200' : 'border-slate-800/80'} flex items-center justify-center md:justify-start gap-2.5`}>
         <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-emerald-500/20 shrink-0">
           <Sparkles className="w-4 h-4" />
         </div>
         <div className="hidden md:block overflow-hidden">
-          <span className="font-bold text-sm text-white tracking-tight block truncate">
+          <span className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'} tracking-tight block truncate`}>
             Architecture Planner
           </span>
           <span className="text-[10px] text-slate-400 block truncate">
@@ -137,7 +144,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={`${item.label} (${item.hindiHint})`}
               className={`w-full group flex items-center justify-center md:justify-between px-2 sm:px-2.5 md:px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer relative ${
                 isActive
-                  ? 'bg-emerald-600/15 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  ? isLight
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-xs'
+                    : 'bg-emerald-600/15 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : isLight
+                  ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
               }`}
             >
@@ -148,10 +159,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               <div className="flex items-center gap-3">
                 <Icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-105 ${
-                  isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
+                  isActive 
+                    ? isLight ? 'text-emerald-600' : 'text-emerald-400' 
+                    : isLight ? 'text-slate-500 group-hover:text-slate-900' : 'text-slate-400 group-hover:text-slate-200'
                 }`} />
                 <div className="hidden md:block text-left">
-                  <span className={`block leading-tight font-medium ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                  <span className={`block leading-tight font-medium ${
+                    isActive 
+                      ? isLight ? 'text-emerald-900 font-semibold' : 'text-white' 
+                      : isLight ? 'text-slate-700' : 'text-slate-300'
+                  }`}>
                     {item.label}
                   </span>
                   <span className="text-[10px] text-slate-500 block leading-tight">
@@ -162,14 +179,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Badge for desktop */}
               {item.badge !== undefined && (
-                <span className={`hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono border ${item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'}`}>
+                <span className={`hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono border ${
+                  isLight 
+                    ? 'bg-slate-200 text-slate-700 border-slate-300' 
+                    : item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
+                }`}>
                   {item.badge}
                 </span>
               )}
 
               {/* Small dot badge on mobile icon view */}
               {item.badge !== undefined && (
-                <span className="md:hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="md:hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500" />
               )}
             </button>
           );
@@ -177,15 +198,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Bottom Hint / Info */}
-      <div className="p-2 sm:p-3 border-t border-slate-800/80">
-        <div className="hidden md:flex items-center gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400">
-          <HelpCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+      <div className={`p-2 sm:p-3 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+        <div className={`hidden md:flex items-center gap-2 p-2.5 rounded-xl ${
+          isLight ? 'bg-slate-100 border border-slate-200 text-slate-600' : 'bg-slate-950/60 border border-slate-800/80 text-slate-400'
+        } text-[11px]`}>
+          <HelpCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           <span className="truncate">Client-only architecture via Firestore</span>
         </div>
 
         {/* Mobile icon-only footer indicator */}
         <div className="md:hidden flex justify-center py-1">
-          <div className="w-2 h-2 rounded-full bg-emerald-400/70" title="Firestore Connected" />
+          <div className="w-2 h-2 rounded-full bg-emerald-500/70" title="Firestore Connected" />
         </div>
       </div>
     </aside>
