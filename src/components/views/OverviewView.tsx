@@ -90,7 +90,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               Frontend & DB
             </span>
             <span className="text-sm font-bold text-white truncate block">
-              {project.techStack.frontend.framework.split(' ')[0]} + Firestore
+              {project.techStack?.frontend?.framework ? project.techStack.frontend.framework.split(' ')[0] : 'Not Set'} • Firestore
             </span>
           </div>
 
@@ -143,7 +143,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </div>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/70">
-            {project.purpose}
+            {project.purpose || 'Abhi koi purpose specify nahi kiya hai. "Edit Project Details" ya Timeline tab me jakar add karein.'}
           </p>
         </div>
 
@@ -161,7 +161,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </div>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/70">
-            {project.targetAudience}
+            {project.targetAudience || 'Abhi target audience define nahi ki gayi hai. "Edit Project Details" me jakar add karein.'}
           </p>
         </div>
       </div>

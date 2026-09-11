@@ -14,7 +14,6 @@ import {
   getLocalProjects,
   saveLocalProjects
 } from './lib/firebase';
-import { INITIAL_PROJECTS } from './data/defaultProjects';
 import { LoginSection } from './components/LoginSection';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -37,8 +36,7 @@ import {
   Copy, 
   Check, 
   X, 
-  ExternalLink,
-  Zap
+  ExternalLink
 } from 'lucide-react';
 
 export function createNewProjectObject(meta: Partial<Project>): Project {
@@ -46,154 +44,61 @@ export function createNewProjectObject(meta: Partial<Project>): Project {
   const now = new Date().toISOString();
   return {
     id,
-    title: meta.title || 'New Software Blueprint',
-    tagline: meta.tagline || 'Modern software architecture plan',
-    purpose: meta.purpose || 'Software solution addressing business requirements with clean architecture.',
-    targetAudience: meta.targetAudience || 'End users & developers',
+    title: meta.title?.trim() || 'New Software Blueprint',
+    tagline: meta.tagline?.trim() || '',
+    purpose: meta.purpose?.trim() || '',
+    targetAudience: meta.targetAudience?.trim() || '',
     category: meta.category || 'fullstack',
     status: meta.status || 'planning',
     createdAt: now,
     updatedAt: now,
     techStack: {
       frontend: {
-        framework: 'React with TypeScript',
-        styling: 'Tailwind CSS',
-        stateManager: 'React State & Context',
-        buildTool: 'Vite',
-        why: 'Fast bundling, modular components, and type safety.'
+        framework: '',
+        styling: '',
+        stateManager: '',
+        buildTool: '',
+        why: ''
       },
       backend: {
         type: 'firestore-direct',
-        runtime: 'Client-side Firebase SDK',
-        framework: 'Direct Firestore Database Transactions',
-        why: 'No backend server maintenance; zero downtime, serverless & real-time.'
+        runtime: '',
+        framework: '',
+        why: ''
       },
       database: {
         primary: 'Google Cloud Firestore',
         type: 'nosql-document',
-        caching: 'IndexedDB & Local Cache',
-        why: 'Direct document sync, real-time listeners, and automatic scaling.'
+        caching: '',
+        why: ''
       },
       auth: {
         provider: 'Firebase Authentication',
         type: 'Email & Password',
-        why: 'Enterprise identity security with zero custom auth server.'
+        why: ''
       },
       hosting: {
-        platform: 'Firebase Hosting / Cloud Run',
-        ciCd: 'GitHub Actions / Cloud Build',
-        domainCdn: 'Global Edge CDN',
-        why: 'Instant global deployment and high availability.'
+        platform: '',
+        ciCd: '',
+        domainCdn: '',
+        why: ''
       }
     },
-    folderStructureText: `src/
-├── components/
-│   ├── ui/
-│   └── views/
-├── lib/
-│   └── firebase.ts
-├── types.ts
-├── App.tsx
-└── main.tsx`,
-    folderTree: [
-      {
-        id: 'f_src',
-        name: 'src',
-        type: 'folder',
-        path: '/src',
-        description: 'Source code root',
-        children: [
-          {
-            id: 'f_components',
-            name: 'components',
-            type: 'folder',
-            path: '/src/components',
-            description: 'UI components directory'
-          },
-          {
-            id: 'f_lib',
-            name: 'lib',
-            type: 'folder',
-            path: '/src/lib',
-            description: 'Firebase and helper libraries'
-          },
-          {
-            id: 'f_app',
-            name: 'App.tsx',
-            type: 'file',
-            path: '/src/App.tsx',
-            description: 'Main App Component'
-          }
-        ]
-      }
-    ],
-    commands: [
-      {
-        id: 'cmd_1',
-        title: 'Project Scaffold',
-        cmd: 'npm create vite@latest my-app -- --template react-ts',
-        category: 'scaffold',
-        description: 'Initialize Vite React project with TypeScript'
-      },
-      {
-        id: 'cmd_2',
-        title: 'Install Firebase & UI Dependencies',
-        cmd: 'npm install firebase lucide-react tailwindcss @tailwindcss/vite',
-        category: 'dependencies',
-        description: 'Install client dependencies'
-      },
-      {
-        id: 'cmd_3',
-        title: 'Start Development Server',
-        cmd: 'npm run dev',
-        category: 'dev',
-        description: 'Run live hot-reload development server'
-      }
-    ],
-    apiEndpoints: [
-      {
-        id: 'api_1',
-        method: 'GET',
-        path: '/users/{uid}/projects',
-        summary: 'Direct Firestore fetch for user projects',
-        authRequired: true,
-        estimatedHours: 2,
-        responseSample: '{\n  "status": "success",\n  "count": 1\n}'
-      }
-    ],
+    folderStructureText: '',
+    folderTree: [],
+    commands: [], // Completely clean: 0 default commands
+    apiEndpoints: [], // Completely clean: 0 default APIs
     timeline: {
-      designDays: 3,
-      frontendDays: 7,
-      backendDays: 2,
-      testingDays: 3,
-      deploymentDays: 1,
-      totalEstimatedWeeks: 3,
-      estimatedBudget: '₹25,000 - ₹50,000',
-      milestones: [
-        {
-          id: 'm_1',
-          title: 'Database Schema & Auth Setup',
-          weekNumber: 1,
-          completed: false,
-          deliverables: 'Firebase project initialized with Firestore rules'
-        },
-        {
-          id: 'm_2',
-          title: 'Core Frontend Screens & State',
-          weekNumber: 2,
-          completed: false,
-          deliverables: 'Interactive dashboard and input forms'
-        },
-        {
-          id: 'm_3',
-          title: 'Production Testing & Launch',
-          weekNumber: 3,
-          completed: false,
-          deliverables: 'Tested and deployed live on web'
-        }
-      ]
+      designDays: 0,
+      frontendDays: 0,
+      backendDays: 0,
+      testingDays: 0,
+      deploymentDays: 0,
+      totalEstimatedWeeks: 0,
+      estimatedBudget: '',
+      milestones: [] // Completely clean: 0 default milestones
     },
-    notes: 'Created via direct frontend Firestore client sync.',
+    notes: '',
     syncStatus: 'synced'
   };
 }
@@ -299,34 +204,6 @@ export function App() {
   const handleEditProjectModal = (proj: Project) => {
     setProjectToEdit(proj);
     setIsProjectModalOpen(true);
-  };
-
-  // 1-Click Load Starter Pre-configured Blueprint
-  const handleLoadStarterTemplate = async () => {
-    if (!user) return;
-    const base = INITIAL_PROJECTS[0];
-    const newProj: Project = {
-      ...base,
-      id: 'proj_' + Date.now(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Update state & local storage immediately
-    setProjects(prev => {
-      const next = [newProj, ...prev];
-      saveLocalProjects(user.uid, next);
-      return next;
-    });
-    setActiveProjectId(newProj.id);
-    setActiveTab('overview');
-    showNotification(`Starter Blueprint "${newProj.title}" loaded successfully!`);
-
-    // Sync to Firestore
-    const res = await saveProjectToFirestore(user.uid, newProj);
-    if (!res.success) {
-      setSyncWarning(res.error || 'Firestore sync pending');
-    }
   };
 
   const handleSaveProjectModal = async (meta: Partial<Project>) => {
@@ -581,20 +458,13 @@ service cloud.firestore {
               <p className="text-xs text-slate-400 leading-relaxed">
                 Abhi dashboard bilkul clean hai. Aap naya project create karke commands, tech stack, API endpoints aur planning add kar sakte hain — sab data live save hoga!
               </p>
-              <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="pt-3 flex items-center justify-center">
                 <button
                   onClick={handleNewProject}
-                  className="w-full sm:w-auto py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-900/40 inline-flex items-center justify-center gap-2 cursor-pointer"
+                  className="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-900/40 inline-flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   + Naya Project Banayein
-                </button>
-                <button
-                  onClick={handleLoadStarterTemplate}
-                  className="w-full sm:w-auto py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 font-medium text-xs sm:text-sm rounded-xl transition border border-slate-700 inline-flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  ⚡ Pre-Configured Blueprint Load Karein
                 </button>
               </div>
             </div>

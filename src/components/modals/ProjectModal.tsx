@@ -51,8 +51,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       tagline: tagline.trim(),
       category,
       status,
-      purpose: purpose.trim() || 'Software solution addressing core client requirements.',
-      targetAudience: targetAudience.trim() || 'Web and mobile users'
+      purpose: purpose.trim(),
+      targetAudience: targetAudience.trim()
     });
     onClose();
   };
