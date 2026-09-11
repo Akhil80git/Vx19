@@ -65,10 +65,18 @@ export interface FolderNode {
 
 export interface CommandItem {
   id: string;
-  title: string;
+  title?: string;
   cmd: string;
-  category: 'scaffold' | 'dependencies' | 'dev' | 'build' | 'deploy' | 'docker';
+  category: string; // custom categories: 'npm', 'db', 'docker', 'folder', 'git', 'dev', 'build', 'deploy' etc.
   description?: string;
+}
+
+export interface StructureModel {
+  id: string;
+  name: string;
+  description?: string;
+  tree: FolderNode[];
+  textFormat?: string;
 }
 
 export interface ApiEndpoint {
@@ -115,7 +123,9 @@ export interface Project {
   techStack: TechStackConfig;
   folderStructureText: string;
   folderTree: FolderNode[];
+  structures?: StructureModel[]; // Support multiple folder structures in a single project
   commands: CommandItem[];
+  commandCategories?: string[]; // Custom categories like 'npm', 'db', 'docker', 'git', etc.
   apiEndpoints: ApiEndpoint[];
   timeline: ProjectTimeline;
   notes: string;

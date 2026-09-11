@@ -59,8 +59,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'commands',
-      label: 'Setup Commands',
-      hindiHint: 'CLI Commands',
+      label: 'CMD Commands',
+      hindiHint: 'Terminal & CLI Commands',
       icon: Terminal,
       badge: commandCount,
       badgeColor: 'bg-emerald-900/60 text-emerald-300 border-emerald-700/50'
@@ -98,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="shrink-0 z-20 bg-slate-900/95 border-r border-slate-800 flex flex-col justify-between select-none
+    <aside className="shrink-0 h-full overflow-hidden z-20 bg-slate-900/95 border-r border-slate-800 flex flex-col justify-between select-none
       w-14 sm:w-16 md:w-64 transition-all duration-200"
     >
       {/* Top Header / Brand indication */}

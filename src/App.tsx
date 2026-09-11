@@ -361,7 +361,7 @@ service cloud.firestore {
 
   // Logged in user dashboard
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
+    <div className="h-screen max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans">
       
       {/* Top Navigation Bar */}
       <Navbar
@@ -375,7 +375,7 @@ service cloud.firestore {
 
       {/* Optional Firestore Rules Notice Banner if console permissions are restricted */}
       {syncWarning && (
-        <div className="bg-amber-950/90 border-b border-amber-500/40 px-4 py-2 text-xs text-amber-200 flex items-center justify-between gap-3">
+        <div className="shrink-0 bg-amber-950/90 border-b border-amber-500/40 px-4 py-2 text-xs text-amber-200 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
@@ -400,9 +400,9 @@ service cloud.firestore {
       )}
 
       {/* Main Workspace with Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         
-        {/* Left Sidebar */}
+        {/* Left Sidebar (Fixed, non-scrolling with page) */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
@@ -411,8 +411,8 @@ service cloud.firestore {
           commandCount={activeProject?.commands?.length || 0}
         />
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
+        {/* Content Area (Only this right area scrolls) */}
+        <main className="flex-1 h-full overflow-y-auto min-h-0 p-4 sm:p-6 lg:p-8 relative">
           
           {/* Live Notification Banner */}
           {statusNotification && (

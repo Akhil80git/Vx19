@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="h-16 bg-slate-900 border-b border-slate-800 text-slate-100 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 select-none shadow-sm">
+      <header className="shrink-0 h-16 bg-slate-900 border-b border-slate-800 text-slate-100 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 select-none shadow-sm">
         
         {/* Left Side: Profile Icon (top left as explicitly requested) & Project Switcher */}
         <div className="flex items-center gap-3">
