@@ -110,6 +110,20 @@ export interface ProjectTimeline {
   milestones: MilestoneItem[];
 }
 
+export interface ChatMessage {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -129,7 +143,8 @@ export interface Project {
   apiEndpoints: ApiEndpoint[];
   timeline: ProjectTimeline;
   notes: string;
+  chatSessions?: ChatSession[];
   syncStatus?: 'synced' | 'local' | 'syncing' | 'error';
 }
 
-export type ActiveTab = 'overview' | 'tech-stack' | 'structure' | 'commands' | 'apis' | 'timeline' | 'firestore-data' | 'projects-list';
+export type ActiveTab = 'overview' | 'tech-stack' | 'structure' | 'commands' | 'chat' | 'apis' | 'timeline' | 'firestore-data' | 'projects-list';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Project, CommandItem } from '../../types';
 import { 
   Terminal, 
@@ -6,18 +6,12 @@ import {
   Check, 
   Plus, 
   Trash2, 
-  Sparkles,
-  Folder,
-  Database,
-  Box,
-  Layers,
-  Edit2,
-  CheckCircle2,
   X,
-  PlusCircle,
-  Hash,
-  FileCode,
-  Tag
+  Box,
+  Database,
+  Folder,
+  Layers,
+  Code
 } from 'lucide-react';
 
 interface CommandsViewProps {
@@ -36,7 +30,6 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
     const existing = project.commandCategories && project.commandCategories.length > 0 
       ? project.commandCategories 
       : DEFAULT_CATEGORIES;
-    // Also include any categories present in commands
     const fromCmds = (project.commands || []).map(c => c.category).filter(Boolean);
     return Array.from(new Set([...existing, ...fromCmds]));
   });
@@ -45,22 +38,16 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // New Category Input state
-  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  // New Category input toggle
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
 
-  // Quick Command input fields (on-screen live inputs)
-  const [quickCmd, setQuickCmd] = useState('');
-  const [quickComment, setQuickComment] = useState('');
-  const [quickCategory, setQuickCategory] = useState<string>('npm');
+  // Quick live new command input at the bottom
+  const [newCmdText, setNewCmdText] = useState('');
+  const [newCmdComment, setNewCmdComment] = useState('');
+  const newCmdInputRef = useRef<HTMLInputElement>(null);
 
-  // Inline editing of existing commands
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCmdText, setEditCmdText] = useState('');
-  const [editCommentText, setEditCommentText] = useState('');
-  const [editCategoryText, setEditCategoryText] = useState('');
-
-  // Sync state when project prop changes
+  // Sync state when project changes
   useEffect(() => {
     setCommands(project.commands || []);
     if (project.commandCategories && project.commandCategories.length > 0) {
@@ -69,20 +56,16 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
     }
   }, [project.id, project.commands, project.commandCategories]);
 
-  // When active category changes (and not 'all'), set quickCategory to match
-  useEffect(() => {
-    if (activeCategory !== 'all') {
-      setQuickCategory(activeCategory);
-    }
-  }, [activeCategory]);
-
+  // Copy single command
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setTimeout(() => setCopiedId(null), 1500);
   };
 
+  // Copy all commands as bash script
   const handleCopyAll = () => {
+    if (commands.length === 0) return;
     const grouped: Record<string, CommandItem[]> = {};
     commands.forEach(c => {
       const cat = c.category || 'general';
@@ -90,50 +73,46 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
       grouped[cat].push(c);
     });
 
-    let script = `#!/usr/bin/env bash\n# CLI Setup & Run Commands for ${project.title}\n\n`;
+    let script = `#!/usr/bin/env bash\n# CLI Setup Commands for ${project.title}\n\n`;
     for (const cat in grouped) {
-      script += `# ==========================================\n`;
-      script += `# CATEGORY: [${cat.toUpperCase()}]\n`;
-      script += `# ==========================================\n`;
+      script += `# ===================== [${cat.toUpperCase()}] =====================\n`;
       grouped[cat].forEach(c => {
         if (c.description) {
-          script += `# Note: ${c.description}\n`;
+          script += `# ${c.description}\n`;
         }
-        script += `${c.cmd}\n\n`;
+        script += `${c.cmd}\n`;
       });
+      script += `\n`;
     }
 
     navigator.clipboard.writeText(script);
     setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2000);
+    setTimeout(() => setCopiedAll(false), 1500);
   };
 
-  // Add new Category (e.g. npm, db, folder, etc.)
+  // Add new Category
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanName = newCategoryName.trim().toLowerCase().replace(/\s+/g, '-');
+    const cleanName = newCatName.trim().toLowerCase().replace(/\s+/g, '-');
     if (!cleanName) return;
 
     if (!categories.includes(cleanName)) {
-      const updatedCats = [...categories, cleanName];
-      setCategories(updatedCats);
+      const updated = [...categories, cleanName];
+      setCategories(updated);
       setActiveCategory(cleanName);
-      setQuickCategory(cleanName);
-
       onUpdateProject({
         ...project,
-        commandCategories: updatedCats,
+        commandCategories: updated,
         updatedAt: new Date().toISOString()
       });
     } else {
       setActiveCategory(cleanName);
     }
-
-    setNewCategoryName('');
-    setShowAddCategoryInput(false);
+    setNewCatName('');
+    setShowAddCat(false);
   };
 
-  // Delete a Category (and move or keep its commands)
+  // Delete Category
   const handleDeleteCategory = (catToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updatedCats = categories.filter(c => c !== catToDelete);
@@ -148,42 +127,42 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
     });
   };
 
-  // Add a command row directly on screen
-  const handleAddCommand = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!quickCmd.trim()) return;
-
-    const targetCategory = (activeCategory !== 'all' ? activeCategory : quickCategory).trim() || 'npm';
-
-    const newItem: CommandItem = {
-      id: 'cmd_' + Date.now(),
-      cmd: quickCmd.trim(),
-      category: targetCategory,
-      description: quickComment.trim() || undefined
-    };
-
-    const updated = [...commands, newItem];
+  // Direct In-Place Edit of Command Text
+  const handleCommandChange = (id: string, updatedCmd: string) => {
+    const updated = commands.map(c => (c.id === id ? { ...c, cmd: updatedCmd } : c));
     setCommands(updated);
-
-    // Make sure category exists in categories array
-    let updatedCats = categories;
-    if (!categories.includes(targetCategory)) {
-      updatedCats = [...categories, targetCategory];
-      setCategories(updatedCats);
-    }
-
     onUpdateProject({
       ...project,
       commands: updated,
-      commandCategories: updatedCats,
       updatedAt: new Date().toISOString()
     });
-
-    setQuickCmd('');
-    setQuickComment('');
   };
 
-  // Delete a single command
+  // Direct In-Place Edit of Command Comment
+  const handleCommentChange = (id: string, updatedComment: string) => {
+    const updated = commands.map(c => 
+      c.id === id ? { ...c, description: updatedComment || undefined } : c
+    );
+    setCommands(updated);
+    onUpdateProject({
+      ...project,
+      commands: updated,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  // Change Category for an item
+  const handleItemCategoryChange = (id: string, newCat: string) => {
+    const updated = commands.map(c => (c.id === id ? { ...c, category: newCat } : c));
+    setCommands(updated);
+    onUpdateProject({
+      ...project,
+      commands: updated,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  // Delete single command
   const handleDeleteCommand = (id: string) => {
     const updated = commands.filter(c => c.id !== id);
     setCommands(updated);
@@ -194,458 +173,290 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
     });
   };
 
-  // Start inline editing
-  const handleStartEdit = (item: CommandItem) => {
-    setEditingId(item.id);
-    setEditCmdText(item.cmd);
-    setEditCommentText(item.description || '');
-    setEditCategoryText(item.category || 'npm');
-  };
+  // Add new Command row
+  const handleAddNewCommand = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newCmdText.trim()) return;
 
-  // Save inline editing
-  const handleSaveEdit = (id: string) => {
-    if (!editCmdText.trim()) return;
+    const targetCat = activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm');
 
-    const updated = commands.map(c => {
-      if (c.id === id) {
-        return {
-          ...c,
-          cmd: editCmdText.trim(),
-          description: editCommentText.trim() || undefined,
-          category: editCategoryText.trim() || c.category
-        };
-      }
-      return c;
-    });
+    const newItem: CommandItem = {
+      id: 'cmd_' + Date.now(),
+      cmd: newCmdText.trim(),
+      category: targetCat,
+      description: newCmdComment.trim() || undefined
+    };
 
+    const updated = [...commands, newItem];
     setCommands(updated);
-    setEditingId(null);
 
     onUpdateProject({
       ...project,
       commands: updated,
       updatedAt: new Date().toISOString()
     });
+
+    setNewCmdText('');
+    setNewCmdComment('');
+    setTimeout(() => newCmdInputRef.current?.focus(), 50);
   };
 
   const filteredCommands = activeCategory === 'all'
     ? commands
     : commands.filter(c => (c.category || '').toLowerCase() === activeCategory.toLowerCase());
 
-  // Category Icon helper
   const getCategoryIcon = (cat: string) => {
     switch (cat.toLowerCase()) {
       case 'npm':
-        return <Box className="w-3.5 h-3.5 text-red-400" />;
+        return <Box className="w-3 h-3 text-red-400" />;
       case 'db':
-      case 'database':
-        return <Database className="w-3.5 h-3.5 text-amber-400" />;
+        return <Database className="w-3 h-3 text-amber-400" />;
       case 'folder':
-        return <Folder className="w-3.5 h-3.5 text-blue-400" />;
+        return <Folder className="w-3 h-3 text-blue-400" />;
       case 'docker':
-        return <Layers className="w-3.5 h-3.5 text-cyan-400" />;
+        return <Layers className="w-3 h-3 text-cyan-400" />;
       default:
-        return <Terminal className="w-3.5 h-3.5 text-emerald-400" />;
+        return <Terminal className="w-3 h-3 text-emerald-400" />;
     }
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-in fade-in duration-200">
+    <div className="w-full max-w-6xl mx-auto space-y-2 select-none animate-in fade-in duration-150">
       
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg shadow-black/20">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-              <Terminal className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                CMD Commands & CLI Terminal Manager
-              </h1>
-              <p className="text-xs text-slate-400">
-                Categories create karein (npm, db, folder, etc.) aur on-screen commands & comments add karke 1-click me copy karein
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Sleek Top Bar: Direct Category + Button, Category Pills, and Quick Actions (NO bulky header text!) */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 border-b border-slate-800/80 text-xs">
+        
+        {/* Left Side: Direct + Category Button & Category Pills */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
+          
+          {/* Direct + Icon Button to Add Category */}
+          {showAddCat ? (
+            <form onSubmit={handleAddCategory} className="flex items-center gap-1 bg-slate-900 border border-emerald-500/50 rounded-lg px-2 py-1">
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Category name (e.g. npm, db, git)..."
+                autoFocus
+                className="w-32 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+              />
+              <button
+                type="submit"
+                disabled={!newCatName.trim()}
+                className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40 p-0.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowAddCat(false); setNewCatName(''); }}
+                className="text-slate-400 hover:text-white p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setShowAddCat(true)}
+              className="h-7 px-2.5 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+              title="Add New Category"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Category</span>
+            </button>
+          )}
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Add Category Button */}
+          {/* All Filter Tab */}
           <button
-            onClick={() => setShowAddCategoryInput(true)}
-            className="py-2 px-3.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700 cursor-pointer shadow-sm"
-            title="Nayi Category Banayein (e.g. npm, db, folder)"
+            onClick={() => setActiveCategory('all')}
+            className={`h-7 px-2.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+              activeCategory === 'all'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+            }`}
           >
-            <Plus className="w-4 h-4 text-emerald-400" />
-            <span>+ Category Banayein</span>
+            <Terminal className="w-3 h-3" />
+            <span>All</span>
+            <span className="text-[10px] opacity-75 font-mono">({commands.length})</span>
           </button>
 
-          {/* Copy All Script */}
+          {/* Dynamic Category Tabs */}
+          {categories.map((cat) => {
+            const count = commands.filter(c => (c.category || '').toLowerCase() === cat.toLowerCase()).length;
+            const isActive = activeCategory === cat;
+
+            return (
+              <div
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`group h-7 px-2.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                  isActive
+                    ? 'bg-slate-800 text-emerald-300 border border-emerald-500/60 shadow-sm'
+                    : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {getCategoryIcon(cat)}
+                <span className="uppercase font-mono text-[11px] tracking-wide">{cat}</span>
+                <span className="text-[10px] opacity-70 font-mono">({count})</span>
+
+                {/* Subtle delete category cross */}
+                {cat !== 'npm' && cat !== 'db' && (
+                  <button
+                    onClick={(e) => handleDeleteCategory(cat, e)}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition ml-0.5 p-0.5"
+                    title={`Delete category "${cat}"`}
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right Side: Copy All Script & Quick Count */}
+        <div className="flex items-center gap-2 shrink-0">
           {commands.length > 0 && (
             <button
               onClick={handleCopyAll}
-              className="py-2 px-3.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-emerald-600/40 cursor-pointer shadow-sm"
-              title="Saari commands ek bash script format me copy karein"
+              className="h-7 px-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition cursor-pointer"
+              title="Copy all commands as bash script"
             >
-              {copiedAll ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Script Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>Copy All Script</span>
-                </>
-              )}
+              {copiedAll ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              <span>{copiedAll ? 'Copied All!' : 'Copy Script'}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Inline Category Creation Box (if active) */}
-      {showAddCategoryInput && (
-        <form 
-          onSubmit={handleAddCategory}
-          className="bg-slate-900/90 border border-emerald-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-150"
-        >
-          <div className="flex-1 w-full flex items-center gap-2">
-            <Tag className="w-4 h-4 text-emerald-400 shrink-0" />
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Nayi category ka naam (jaise: npm, db, folder, docker, deploy, git)..."
-              autoFocus
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
-            />
+      {/* Commands List: Super Compact, Low-Height Input Rows with Zero Outer Bulky Cards */}
+      <div className="space-y-1">
+        {filteredCommands.length === 0 && (
+          <div className="py-6 text-center text-slate-500 text-xs border border-dashed border-slate-800/80 rounded-xl">
+            Abhi koi command nahi hai. Neeche diye gaye input me command likh kar Enter dabayein.
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              type="submit"
-              disabled={!newCategoryName.trim()}
-              className="py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Category Add Karein</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddCategoryInput(false);
-                setNewCategoryName('');
-              }}
-              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </form>
-      )}
+        )}
 
-      {/* Category Tabs Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
-        {/* All Tab */}
-        <button
-          onClick={() => setActiveCategory('all')}
-          className={`px-3.5 py-2 rounded-xl font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-            activeCategory === 'all'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
-              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-          }`}
-        >
-          <Terminal className="w-3.5 h-3.5" />
-          <span>All Commands</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-            activeCategory === 'all' ? 'bg-emerald-700 text-white' : 'bg-slate-800 text-slate-400'
-          }`}>
-            {commands.length}
-          </span>
-        </button>
-
-        {/* Dynamic Categories */}
-        {categories.map((cat) => {
-          const count = commands.filter(c => (c.category || '').toLowerCase() === cat.toLowerCase()).length;
-          const isActive = activeCategory === cat;
+        {filteredCommands.map((item, index) => {
+          const isCopied = copiedId === item.id;
 
           return (
             <div
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`group px-3 py-2 rounded-xl font-medium flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                isActive
-                  ? 'bg-slate-800 text-emerald-300 border border-emerald-500/50 shadow-sm'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-              }`}
+              key={item.id}
+              className="group h-9 w-full flex items-center gap-1.5 px-2 bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-lg text-xs transition duration-100 shadow-sm"
             >
-              {getCategoryIcon(cat)}
-              <span className="font-semibold uppercase text-[11px] tracking-wide">{cat}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                isActive ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50' : 'bg-slate-800 text-slate-400'
-              }`}>
-                {count}
-              </span>
+              {/* 1. Left Copy Icon (Aage copy button) */}
+              <button
+                type="button"
+                onClick={() => handleCopy(item.id, item.cmd)}
+                className={`p-1 rounded text-slate-400 hover:text-white transition cursor-pointer shrink-0 ${
+                  isCopied ? 'text-emerald-400 bg-emerald-950/60' : 'hover:bg-slate-800'
+                }`}
+                title="Copy this command"
+              >
+                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
 
-              {/* Delete Category Cross (visible on hover if empty or custom) */}
-              {cat !== 'npm' && cat !== 'db' && (
-                <button
-                  onClick={(e) => handleDeleteCategory(cat, e)}
-                  title={`Delete category "${cat}"`}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition ml-0.5 p-0.5"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Live On-Screen Command Input Box (User input field jisme command likh saku + comment) */}
-      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-md shadow-black/20 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <PlusCircle className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-xs sm:text-sm font-bold text-white">
-              {activeCategory === 'all' 
-                ? 'Nayi Command Likhein (Screen Input)' 
-                : `[${activeCategory.toUpperCase()}] Category Me Nayi Command Likhein`}
-            </h2>
-          </div>
-          <span className="text-[11px] text-slate-400">
-            Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300">Enter</kbd> to add
-          </span>
-        </div>
-
-        <form onSubmit={handleAddCommand} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-            
-            {/* Command Field (Required) */}
-            <div className="md:col-span-6">
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Command (CLI String) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-500 font-mono text-xs select-none">$</span>
-                <input
-                  type="text"
-                  value={quickCmd}
-                  onChange={(e) => setQuickCmd(e.target.value)}
-                  placeholder="e.g. npm install lucide-react (ya koi bhi command)"
-                  className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl pl-7 pr-3 py-2 text-xs font-mono text-emerald-300 placeholder-slate-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Comment / Note Field (Optional - jaisa user ne manga: chahu to comment likhu ya na likhu) */}
-            <div className="md:col-span-4">
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Comment / Description <span className="text-slate-500 font-normal">(Optional)</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-500 font-mono text-xs select-none">#</span>
-                <input
-                  type="text"
-                  value={quickComment}
-                  onChange={(e) => setQuickComment(e.target.value)}
-                  placeholder="Comment likhein agar zarurat ho (e.g. icons library)..."
-                  className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl pl-7 pr-3 py-2 text-xs text-slate-300 placeholder-slate-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Category Select (if in 'all' view) */}
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Category
-              </label>
+              {/* 2. Category Dropdown Pill */}
               <select
-                value={activeCategory !== 'all' ? activeCategory : quickCategory}
-                onChange={(e) => setQuickCategory(e.target.value)}
-                disabled={activeCategory !== 'all'}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 capitalize focus:outline-none focus:border-emerald-500"
+                value={item.category || 'npm'}
+                onChange={(e) => handleItemCategoryChange(item.id, e.target.value)}
+                className="bg-slate-950 border border-slate-800 text-[10px] font-mono uppercase text-emerald-400 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500 shrink-0 cursor-pointer"
+                title="Change Category"
               >
                 {categories.map((c) => (
-                  <option key={c} value={c} className="bg-slate-900 text-white capitalize">
+                  <option key={c} value={c} className="bg-slate-900 text-slate-200 uppercase">
                     {c}
                   </option>
                 ))}
               </select>
-            </div>
 
-          </div>
+              {/* 3. Terminal $ Symbol */}
+              <span className="text-slate-600 font-mono select-none text-xs shrink-0">$</span>
 
-          {/* Add Row Button */}
-          <div className="flex items-center justify-end pt-1">
-            <button
-              type="submit"
-              disabled={!quickCmd.trim()}
-              className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-md shadow-emerald-900/30"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add Command to {activeCategory !== 'all' ? activeCategory.toUpperCase() : quickCategory.toUpperCase()}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+              {/* 4. Direct In-Place Command Input (No separate edit button, direct edit!) */}
+              <input
+                type="text"
+                value={item.cmd}
+                onChange={(e) => handleCommandChange(item.id, e.target.value)}
+                placeholder="Command string..."
+                className="flex-1 min-w-0 bg-transparent text-emerald-300 font-mono text-xs focus:outline-none selection:bg-emerald-900 selection:text-white"
+              />
 
-      {/* Commands List Cards */}
-      <div className="space-y-3">
-        {filteredCommands.length === 0 ? (
-          <div className="p-8 text-center bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl text-slate-400 space-y-2">
-            <Terminal className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="text-xs font-medium text-slate-300">
-              {activeCategory === 'all' 
-                ? 'Abhi koi command add nahi ki gayi hai.' 
-                : `"${activeCategory.toUpperCase()}" category me abhi koi command nahi hai.`}
-            </p>
-            <p className="text-[11px] text-slate-500">
-              Upar diye gaye input field me command likhein aur "+ Add Command" par click karein.
-            </p>
-          </div>
-        ) : (
-          filteredCommands.map((item, index) => {
-            const isCopied = copiedId === item.id;
-            const isEditing = editingId === item.id;
-
-            return (
-              <div
-                key={item.id}
-                className="group bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-3.5 sm:p-4 shadow-sm transition space-y-2.5"
-              >
-                {isEditing ? (
-                  /* Inline Editing Form */
-                  <div className="space-y-3 bg-slate-950/70 p-3 rounded-xl border border-emerald-500/40">
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                      <div className="sm:col-span-7">
-                        <label className="text-[10px] text-slate-400 block mb-1">Edit Command</label>
-                        <input
-                          type="text"
-                          value={editCmdText}
-                          onChange={(e) => setEditCmdText(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 font-mono text-xs text-emerald-300 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <label className="text-[10px] text-slate-400 block mb-1">Edit Comment</label>
-                        <input
-                          type="text"
-                          value={editCommentText}
-                          onChange={(e) => setEditCommentText(e.target.value)}
-                          placeholder="Optional comment..."
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="text-[10px] text-slate-400 block mb-1">Category</label>
-                        <select
-                          value={editCategoryText}
-                          onChange={(e) => setEditCategoryText(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 capitalize focus:outline-none"
-                        >
-                          {categories.map((c) => (
-                            <option key={c} value={c} className="bg-slate-900 capitalize">{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        onClick={() => handleSaveEdit(item.id)}
-                        className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Save</span>
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium cursor-pointer transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* Standard Display Row */
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Category Badge */}
-                        <span className="px-2 py-0.5 text-[10px] uppercase font-mono font-bold tracking-wider bg-slate-950 text-emerald-400 border border-emerald-500/30 rounded-lg flex items-center gap-1.5">
-                          {getCategoryIcon(item.category || 'npm')}
-                          <span>{item.category || 'npm'}</span>
-                        </span>
-
-                        {/* Optional Comment / Description */}
-                        {item.description ? (
-                          <span className="text-xs text-slate-400 italic">
-                            # {item.description}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            Command #{index + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Action Buttons: Copy, Edit, Delete */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Copy Button */}
-                        <button
-                          onClick={() => handleCopy(item.id, item.cmd)}
-                          className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                            isCopied
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                          }`}
-                          title="Copy command to clipboard"
-                        >
-                          {isCopied ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-300" />
-                              <span>Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Copy</span>
-                            </>
-                          )}
-                        </button>
-
-                        {/* Edit Button */}
-                        <button
-                          onClick={() => handleStartEdit(item)}
-                          className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
-                          title="Edit command & comment"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handleDeleteCommand(item.id)}
-                          className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-800 transition"
-                          title="Delete command"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Terminal Command Display Bar */}
-                    <div className="relative flex items-center px-3.5 py-2.5 bg-slate-950 border border-slate-800/90 rounded-xl font-mono text-xs sm:text-sm text-emerald-300 overflow-x-auto select-all">
-                      <span className="text-slate-600 select-none mr-2">$</span>
-                      <span className="flex-1 whitespace-pre">{item.cmd}</span>
-                    </div>
-                  </>
-                )}
+              {/* 5. Optional Inline Comment Input (# comment) */}
+              <div className="flex items-center gap-1 max-w-[200px] sm:max-w-[260px] shrink-0 border-l border-slate-800 pl-2">
+                <span className="text-slate-600 font-mono text-[11px] select-none">#</span>
+                <input
+                  type="text"
+                  value={item.description || ''}
+                  onChange={(e) => handleCommentChange(item.id, e.target.value)}
+                  placeholder="comment (optional)"
+                  className="w-full bg-transparent text-[11px] text-slate-400 focus:text-slate-200 placeholder-slate-600 focus:outline-none truncate"
+                />
               </div>
-            );
-          })
-        )}
+
+              {/* 6. Minor Delete Icon at the very end of the row (last me minor delete) */}
+              <button
+                type="button"
+                onClick={() => handleDeleteCommand(item.id)}
+                className="p-1 text-slate-500 hover:text-red-400 opacity-60 group-hover:opacity-100 rounded hover:bg-slate-800 transition cursor-pointer shrink-0"
+                title="Delete command"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          );
+        })}
+
+        {/* Live Bottom Input Row: Sleek, Low Height, Add Command Instantly on Enter */}
+        <form
+          onSubmit={handleAddNewCommand}
+          className="h-9 w-full flex items-center gap-1.5 px-2 bg-slate-950 border border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-lg text-xs transition duration-100 shadow-inner"
+        >
+          {/* Left + Icon */}
+          <span className="p-1 text-emerald-400 shrink-0">
+            <Plus className="w-3.5 h-3.5" />
+          </span>
+
+          {/* Category Tag */}
+          <span className="bg-emerald-950/70 border border-emerald-500/30 text-[10px] font-mono uppercase text-emerald-400 rounded px-1.5 py-0.5 shrink-0">
+            {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
+          </span>
+
+          <span className="text-slate-600 font-mono select-none text-xs shrink-0">$</span>
+
+          {/* New Command Input */}
+          <input
+            ref={newCmdInputRef}
+            type="text"
+            value={newCmdText}
+            onChange={(e) => setNewCmdText(e.target.value)}
+            placeholder="Nayi command likhein aur Enter dabayein..."
+            className="flex-1 min-w-0 bg-transparent text-emerald-300 font-mono text-xs focus:outline-none placeholder-slate-500"
+          />
+
+          {/* New Comment Input */}
+          <div className="flex items-center gap-1 max-w-[180px] sm:max-w-[240px] shrink-0 border-l border-slate-800 pl-2">
+            <span className="text-slate-600 font-mono text-[11px] select-none">#</span>
+            <input
+              type="text"
+              value={newCmdComment}
+              onChange={(e) => setNewCmdComment(e.target.value)}
+              placeholder="comment (optional)"
+              className="w-full bg-transparent text-[11px] text-slate-400 placeholder-slate-600 focus:outline-none truncate"
+            />
+          </div>
+
+          {/* Quick Add Button */}
+          <button
+            type="submit"
+            disabled={!newCmdText.trim()}
+            className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded text-[11px] font-medium flex items-center gap-1 transition cursor-pointer shrink-0"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Add</span>
+          </button>
+        </form>
       </div>
 
     </div>

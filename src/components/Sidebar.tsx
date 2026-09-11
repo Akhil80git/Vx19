@@ -11,7 +11,8 @@ import {
   Folders, 
   Sparkles,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -64,6 +65,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Terminal,
       badge: commandCount,
       badgeColor: 'bg-emerald-900/60 text-emerald-300 border-emerald-700/50'
+    },
+    {
+      id: 'chat',
+      label: 'Self Chat & Notes',
+      hindiHint: 'Personal Scratchpad & Messages',
+      icon: MessageSquare,
+      badgeColor: 'bg-indigo-900/60 text-indigo-300 border-indigo-700/50'
     },
     {
       id: 'apis',

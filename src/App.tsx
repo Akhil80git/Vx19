@@ -21,6 +21,7 @@ import { OverviewView } from './components/views/OverviewView';
 import { ArchitectureView } from './components/views/ArchitectureView';
 import { StructureView } from './components/views/StructureView';
 import { CommandsView } from './components/views/CommandsView';
+import { ChatView } from './components/views/ChatView';
 import { ApiPlannerView } from './components/views/ApiPlannerView';
 import { TimelineView } from './components/views/TimelineView';
 import { FirestoreDataView } from './components/views/FirestoreDataView';
@@ -486,6 +487,11 @@ service cloud.firestore {
             />
           ) : activeTab === 'commands' ? (
             <CommandsView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'chat' ? (
+            <ChatView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
             />
