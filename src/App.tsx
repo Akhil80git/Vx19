@@ -161,6 +161,7 @@ export function App() {
       user.uid,
       (remoteProjects) => {
         setLoadingProjects(false);
+        setSyncWarning(null);
         if (remoteProjects && remoteProjects.length > 0) {
           setProjects(remoteProjects);
           saveLocalProjects(user.uid, remoteProjects);
@@ -249,6 +250,8 @@ export function App() {
       const res = await saveProjectToFirestore(user.uid, newProj);
       if (!res.success) {
         setSyncWarning(res.error || 'Firestore sync pending');
+      } else {
+        setSyncWarning(null);
       }
     }
   };
@@ -268,6 +271,8 @@ export function App() {
     const res = await saveProjectToFirestore(user.uid, updated);
     if (!res.success) {
       setSyncWarning(res.error || 'Firestore sync pending');
+    } else {
+      setSyncWarning(null);
     }
   };
 
@@ -331,7 +336,8 @@ export function App() {
   const firestoreRulesText = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
+    // User profile document (/users/{userId}) + Saare subcollections (/users/{userId}/projects/...)
+    match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }

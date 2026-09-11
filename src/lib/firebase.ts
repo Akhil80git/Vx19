@@ -182,12 +182,20 @@ export function subscribeToUserProjects(
   );
 }
 
+// Helper: Remove undefined fields recursively so Firestore never throws unsupported field value error
+function sanitizeForFirestore<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data, (key, value) => {
+    return value === undefined ? null : value;
+  }));
+}
+
 // Save or Update Project directly in Firestore
 export async function saveProjectToFirestore(uid: string, project: Project): Promise<{ success: boolean; error?: string }> {
   try {
+    const cleanProject = sanitizeForFirestore(project);
     const projectDocRef = doc(db, "users", uid, "projects", project.id);
     await setDoc(projectDocRef, {
-      ...project,
+      ...cleanProject,
       updatedAt: new Date().toISOString(),
       syncStatus: 'synced'
     }, { merge: true });

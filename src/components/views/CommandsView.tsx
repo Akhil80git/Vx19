@@ -119,7 +119,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
   // Direct In-Place Edit of Command Comment (NO DB calls on keystroke!)
   const handleCommentChange = (id: string, updatedComment: string) => {
     const updated = commands.map(c => 
-      c.id === id ? { ...c, description: updatedComment || undefined } : c
+      c.id === id ? { ...c, description: updatedComment } : c
     );
     setCommands(updated);
     setDirtyCmdIds(prev => new Set(prev).add(id));
@@ -219,7 +219,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
       id: 'cmd_' + Date.now(),
       cmd: newCmdText.trim(),
       category: targetCat,
-      description: newCmdComment.trim() || undefined
+      description: newCmdComment.trim()
     };
 
     const updated = [...commands, newItem];
