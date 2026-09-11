@@ -1,0 +1,6 @@
+{
+  "name": "ArchPlan - Software Architecture & Project Planner",
+  "description": "Comprehensive responsive software architecture blueprint and planning dashboard with Firebase Auth, Firestore sync, project scaffolding, commands, tech stack, and timeline estimation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
