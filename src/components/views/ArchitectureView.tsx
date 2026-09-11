@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, TechStackConfig } from '../../types';
 import { 
   Cpu, 
@@ -26,6 +26,11 @@ export const ArchitectureView: React.FC<ArchitectureViewProps> = ({
 }) => {
   const [techStack, setTechStack] = useState<TechStackConfig>(project.techStack);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Sync state when project changes
+  useEffect(() => {
+    setTechStack(project.techStack);
+  }, [project.id, project.techStack]);
 
   const handleFieldChange = (section: keyof TechStackConfig, field: string, value: string) => {
     setTechStack(prev => ({

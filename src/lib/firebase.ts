@@ -127,6 +127,30 @@ export async function logoutUser(): Promise<void> {
   await fbSignOut(auth);
 }
 
+// Local Storage Offline-First Helpers
+export function getLocalProjects(uid: string): Project[] {
+  try {
+    const raw = localStorage.getItem(`software_planner_projects_${uid}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading projects from localStorage:', e);
+  }
+  return [];
+}
+
+export function saveLocalProjects(uid: string, projects: Project[]): void {
+  try {
+    localStorage.setItem(`software_planner_projects_${uid}`, JSON.stringify(projects));
+  } catch (e) {
+    console.warn('Error writing projects to localStorage:', e);
+  }
+}
+
 // Live real-time Firestore synchronization for all projects of this user
 export function subscribeToUserProjects(
   uid: string, 
@@ -138,13 +162,18 @@ export function subscribeToUserProjects(
   return onSnapshot(
     projectsColRef, 
     (snapshot) => {
-      const projects: Project[] = [];
+      const remoteProjects: Project[] = [];
       snapshot.forEach((d) => {
-        projects.push({ ...d.data(), id: d.id } as Project);
+        remoteProjects.push({ ...d.data(), id: d.id } as Project);
       });
       // Sort by updatedAt descending
-      projects.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
-      onUpdate(projects);
+      remoteProjects.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+      
+      // Also cache in localStorage for instant offline access
+      if (remoteProjects.length > 0) {
+        saveLocalProjects(uid, remoteProjects);
+      }
+      onUpdate(remoteProjects);
     },
     (err) => {
       console.error('Firestore onSnapshot error:', err);
@@ -165,7 +194,12 @@ export async function saveProjectToFirestore(uid: string, project: Project): Pro
     return { success: true };
   } catch (err: any) {
     console.error('Firestore save project error:', err);
-    return { success: false, error: err?.message || 'Firestore save failed' };
+    return { 
+      success: false, 
+      error: err?.code === 'permission-denied' 
+        ? 'Firestore Rules block access. Please set rules to allow read, write in Firebase Console.' 
+        : (err?.message || 'Firestore save failed') 
+    };
   }
 }
 

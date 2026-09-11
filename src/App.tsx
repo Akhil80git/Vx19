@@ -10,8 +10,11 @@ import {
   saveProjectToFirestore, 
   deleteProjectFromFirestore, 
   logoutUser,
-  firebaseConfig 
+  firebaseConfig,
+  getLocalProjects,
+  saveLocalProjects
 } from './lib/firebase';
+import { INITIAL_PROJECTS } from './data/defaultProjects';
 import { LoginSection } from './components/LoginSection';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -24,7 +27,19 @@ import { TimelineView } from './components/views/TimelineView';
 import { FirestoreDataView } from './components/views/FirestoreDataView';
 import { ProjectsListView } from './components/views/ProjectsListView';
 import { ProjectModal } from './components/modals/ProjectModal';
-import { FolderPlus, Plus, Database, Sparkles, Loader2 } from 'lucide-react';
+import { 
+  FolderPlus, 
+  Plus, 
+  Database, 
+  Sparkles, 
+  Loader2, 
+  ShieldAlert, 
+  Copy, 
+  Check, 
+  X, 
+  ExternalLink,
+  Zap
+} from 'lucide-react';
 
 export function createNewProjectObject(meta: Partial<Project>): Project {
   const id = 'proj_' + Date.now();
@@ -187,7 +202,7 @@ export function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Projects list directly from Firestore
+  // Projects list directly from Firestore and local cache
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -198,9 +213,12 @@ export function App() {
   // Modal states
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [showRulesHelp, setShowRulesHelp] = useState(false);
+  const [copiedRules, setCopiedRules] = useState(false);
 
-  // Status message
+  // Status message & Firestore Sync Warnings
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   // 1. Listen to Firebase Auth state
   useEffect(() => {
@@ -211,7 +229,7 @@ export function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Real-time Firestore sync for user projects
+  // 2. Real-time Firestore sync for user projects + Instant Offline Cache
   useEffect(() => {
     if (!user) {
       setProjects([]);
@@ -219,23 +237,41 @@ export function App() {
       return;
     }
 
-    setLoadingProjects(true);
+    // A. Read instant local cache first so user NEVER experiences blank UI
+    const cached = getLocalProjects(user.uid);
+    if (cached && cached.length > 0) {
+      setProjects(cached);
+      setActiveProjectId((prev) => {
+        if (prev && cached.some((p) => p.id === prev)) return prev;
+        return cached[0]?.id || null;
+      });
+      setLoadingProjects(false);
+    } else {
+      setLoadingProjects(true);
+    }
+
+    // B. Subscribe to live real-time Firestore database
     const unsubscribe = subscribeToUserProjects(
       user.uid,
-      (fetchedProjects) => {
-        setProjects(fetchedProjects);
+      (remoteProjects) => {
         setLoadingProjects(false);
-        // Ensure an active project is selected if available
-        setActiveProjectId((prev) => {
-          if (prev && fetchedProjects.some((p) => p.id === prev)) {
-            return prev;
-          }
-          return fetchedProjects[0]?.id || null;
-        });
+        if (remoteProjects && remoteProjects.length > 0) {
+          setProjects(remoteProjects);
+          saveLocalProjects(user.uid, remoteProjects);
+          setActiveProjectId((prev) => {
+            if (prev && remoteProjects.some((p) => p.id === prev)) {
+              return prev;
+            }
+            return remoteProjects[0]?.id || null;
+          });
+        }
       },
       (err) => {
-        console.error('Error in Firestore live sync:', err);
+        console.warn('Firestore live sync listener error:', err);
         setLoadingProjects(false);
+        if (err?.code === 'permission-denied') {
+          setSyncWarning('Firestore security rules: Write/Read permission required in Firebase Console.');
+        }
       }
     );
 
@@ -244,7 +280,7 @@ export function App() {
 
   const showNotification = (msg: string) => {
     setStatusNotification(msg);
-    setTimeout(() => setStatusNotification(null), 3000);
+    setTimeout(() => setStatusNotification(null), 3500);
   };
 
   // Active project selection
@@ -265,6 +301,34 @@ export function App() {
     setIsProjectModalOpen(true);
   };
 
+  // 1-Click Load Starter Pre-configured Blueprint
+  const handleLoadStarterTemplate = async () => {
+    if (!user) return;
+    const base = INITIAL_PROJECTS[0];
+    const newProj: Project = {
+      ...base,
+      id: 'proj_' + Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Update state & local storage immediately
+    setProjects(prev => {
+      const next = [newProj, ...prev];
+      saveLocalProjects(user.uid, next);
+      return next;
+    });
+    setActiveProjectId(newProj.id);
+    setActiveTab('overview');
+    showNotification(`Starter Blueprint "${newProj.title}" loaded successfully!`);
+
+    // Sync to Firestore
+    const res = await saveProjectToFirestore(user.uid, newProj);
+    if (!res.success) {
+      setSyncWarning(res.error || 'Firestore sync pending');
+    }
+  };
+
   const handleSaveProjectModal = async (meta: Partial<Project>) => {
     if (!user) return;
 
@@ -275,31 +339,82 @@ export function App() {
         ...meta,
         updatedAt: new Date().toISOString()
       };
-      await saveProjectToFirestore(user.uid, updated);
-      showNotification(`Project "${updated.title}" updated in Firestore!`);
+
+      // 1. Update React state immediately
+      setProjects((prev) => {
+        const next = prev.map((p) => (p.id === updated.id ? updated : p));
+        saveLocalProjects(user.uid, next);
+        return next;
+      });
+      showNotification(`Project "${updated.title}" updated!`);
+
+      // 2. Sync to Firestore in background
+      const res = await saveProjectToFirestore(user.uid, updated);
+      if (!res.success) {
+        setSyncWarning(res.error || 'Firestore sync pending');
+      }
     } else {
       // Create new project
       const newProj = createNewProjectObject(meta);
-      await saveProjectToFirestore(user.uid, newProj);
+
+      // 1. Update React state immediately
+      setProjects((prev) => {
+        const next = [newProj, ...prev];
+        saveLocalProjects(user.uid, next);
+        return next;
+      });
       setActiveProjectId(newProj.id);
-      showNotification(`New Project "${newProj.title}" saved to Firestore!`);
+      setActiveTab('overview');
+      showNotification(`New Project "${newProj.title}" created!`);
+
+      // 2. Sync to Firestore in background
+      const res = await saveProjectToFirestore(user.uid, newProj);
+      if (!res.success) {
+        setSyncWarning(res.error || 'Firestore sync pending');
+      }
     }
   };
 
   const handleUpdateActiveProject = async (updated: Project) => {
     if (!user) return;
-    await saveProjectToFirestore(user.uid, updated);
-    showNotification('Changes saved live to Firestore');
+
+    // 1. Update React state & localStorage immediately
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updated.id ? updated : p));
+      saveLocalProjects(user.uid, next);
+      return next;
+    });
+    showNotification('Changes saved live!');
+
+    // 2. Sync to Firestore in background
+    const res = await saveProjectToFirestore(user.uid, updated);
+    if (!res.success) {
+      setSyncWarning(res.error || 'Firestore sync pending');
+    }
   };
 
   const handleDeleteProject = async (id: string) => {
     if (!user) return;
     const proj = projects.find((p) => p.id === id);
-    const confirmed = window.confirm(`Kya aap "${proj?.title || 'yeh project'}" ko Firestore se delete karna chahte hain?`);
+    const confirmed = window.confirm(`Kya aap "${proj?.title || 'yeh project'}" ko delete karna chahte hain?`);
     if (!confirmed) return;
 
+    // 1. Update state & localStorage immediately
+    setProjects((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      saveLocalProjects(user.uid, next);
+      return next;
+    });
+
+    if (activeProjectId === id) {
+      const remaining = projects.filter((p) => p.id !== id);
+      setActiveProjectId(remaining[0]?.id || null);
+    }
+
+    showNotification('Project deleted');
+
+    // 2. Delete from Firestore in background
     await deleteProjectFromFirestore(user.uid, id);
-    showNotification('Project deleted from Firestore');
   };
 
   const handleDuplicateProject = async (proj: Project) => {
@@ -311,9 +426,21 @@ export function App() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await saveProjectToFirestore(user.uid, duplicated);
+
+    // 1. Update state & localStorage immediately
+    setProjects((prev) => {
+      const next = [duplicated, ...prev];
+      saveLocalProjects(user.uid, next);
+      return next;
+    });
     setActiveProjectId(duplicated.id);
-    showNotification('Project duplicated in Firestore');
+    showNotification('Project duplicated successfully!');
+
+    // 2. Sync to Firestore
+    const res = await saveProjectToFirestore(user.uid, duplicated);
+    if (!res.success) {
+      setSyncWarning(res.error || 'Firestore sync pending');
+    }
   };
 
   const handleLogout = async () => {
@@ -321,6 +448,21 @@ export function App() {
     setUser(null);
     setProjects([]);
     setActiveProjectId(null);
+  };
+
+  const firestoreRulesText = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`;
+
+  const handleCopyRules = () => {
+    navigator.clipboard.writeText(firestoreRulesText);
+    setCopiedRules(true);
+    setTimeout(() => setCopiedRules(false), 2000);
   };
 
   // Loading auth state
@@ -353,6 +495,32 @@ export function App() {
         onNewProject={handleNewProject}
         onLogout={handleLogout}
       />
+
+      {/* Optional Firestore Rules Notice Banner if console permissions are restricted */}
+      {syncWarning && (
+        <div className="bg-amber-950/90 border-b border-amber-500/40 px-4 py-2 text-xs text-amber-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Data Local Storage me 100% saved hai!</strong> Firestore Cloud Sync ke liye Firebase Console me Firestore Rules ko allow karein.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowRulesHelp(true)}
+              className="underline hover:text-amber-100 font-medium cursor-pointer"
+            >
+              Rules Setup Dekhein
+            </button>
+            <button
+              onClick={() => setSyncWarning(null)}
+              className="text-amber-400 hover:text-white p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Workspace with Sidebar */}
       <div className="flex-1 flex overflow-hidden">
@@ -399,8 +567,8 @@ export function App() {
               onEditProject={handleEditProjectModal}
             />
           ) : !activeProject ? (
-            /* Empty clean state when user has 0 projects in Firestore */
-            <div className="max-w-xl mx-auto my-12 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4 shadow-xl">
+            /* Empty clean state when user has 0 projects */
+            <div className="max-w-xl mx-auto my-12 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4 shadow-xl animate-in fade-in duration-200">
               <div className="w-16 h-16 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-2">
                 <FolderPlus className="w-8 h-8" />
               </div>
@@ -408,25 +576,33 @@ export function App() {
                 Dashboard Clean & Ready
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Aapka Firebase account (<span className="text-emerald-400 font-semibold">{user.email}</span>) direct Google Firestore (<code className="font-mono text-emerald-300">{firebaseConfig.projectId}</code>) se connected hai.
+                Aapka account (<span className="text-emerald-400 font-semibold">{user.email}</span>) direct Firebase & Google Firestore (<code className="font-mono text-emerald-300">{firebaseConfig.projectId}</code>) se jud chuka hai.
               </p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Abhi dashboard me koi dummy project nahi hai. Niche button par click karke apna software project add karein — aap jo bhi tech stack, commands, API endpoints ya notes likhenge, wo sidha aapke Firestore me live save honge!
+                Abhi dashboard bilkul clean hai. Aap naya project create karke commands, tech stack, API endpoints aur planning add kar sakte hain — sab data live save hoga!
               </p>
-              <div className="pt-2">
+              <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   onClick={handleNewProject}
-                  className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-900/40 inline-flex items-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-900/40 inline-flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   + Naya Project Banayein
+                </button>
+                <button
+                  onClick={handleLoadStarterTemplate}
+                  className="w-full sm:w-auto py-2.5 px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 font-medium text-xs sm:text-sm rounded-xl transition border border-slate-700 inline-flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  ⚡ Pre-Configured Blueprint Load Karein
                 </button>
               </div>
             </div>
           ) : activeTab === 'overview' ? (
             <OverviewView
               project={activeProject}
-              onUpdateProject={handleUpdateActiveProject}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onEditProject={() => handleEditProjectModal(activeProject)}
             />
           ) : activeTab === 'tech-stack' ? (
             <ArchitectureView
@@ -465,6 +641,68 @@ export function App() {
         onSave={handleSaveProjectModal}
         projectToEdit={projectToEdit}
       />
+
+      {/* Firestore Security Rules Helper Modal */}
+      {showRulesHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl text-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-amber-400" />
+                Firebase Firestore Security Rules Guide
+              </h3>
+              <button
+                onClick={() => setShowRulesHelp(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Firebase Console me jab Firestore Database create hota hai, to by default writes locked ho sakti hain.
+              Agar aap chahte hain ki authenticated user (<code className="text-emerald-400 font-mono">{user.email}</code>) direct Firestore me data likh sake, to:
+            </p>
+
+            <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <li>Firebase Console kholiye (<code className="text-emerald-300">{firebaseConfig.projectId}</code>).</li>
+              <li><strong>Firestore Database</strong> &gt; <strong>Rules</strong> tab par jayein.</li>
+              <li>Niche diye gaye rules paste karke <strong>Publish</strong> karein:</li>
+            </ol>
+
+            <div className="relative">
+              <pre className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] font-mono text-emerald-300 overflow-x-auto">
+                {firestoreRulesText}
+              </pre>
+              <button
+                onClick={handleCopyRules}
+                className="absolute top-2 right-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1 border border-slate-700 transition cursor-pointer"
+              >
+                {copiedRules ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Rules</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setShowRulesHelp(false)}
+                className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Samajh Aa Gaya / Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

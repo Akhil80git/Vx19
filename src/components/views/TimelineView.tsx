@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, ProjectTimeline, MilestoneItem } from '../../types';
 import { 
   CalendarClock, 
@@ -23,10 +23,17 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   project,
   onUpdateProject
 }) => {
-  const [purpose, setPurpose] = useState(project.purpose);
-  const [targetAudience, setTargetAudience] = useState(project.targetAudience);
-  const [timeline, setTimeline] = useState<ProjectTimeline>(project.timeline);
+  const [purpose, setPurpose] = useState(project.purpose || '');
+  const [targetAudience, setTargetAudience] = useState(project.targetAudience || '');
+  const [timeline, setTimeline] = useState<ProjectTimeline>(project.timeline || { milestones: [] });
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Sync state when project updates
+  useEffect(() => {
+    setPurpose(project.purpose || '');
+    setTargetAudience(project.targetAudience || '');
+    setTimeline(project.timeline || { milestones: [] });
+  }, [project.id, project.timeline, project.purpose, project.targetAudience]);
 
   // New milestone state
   const [showAddMilestone, setShowAddMilestone] = useState(false);

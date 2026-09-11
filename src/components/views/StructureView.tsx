@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, FolderNode } from '../../types';
 import { 
   FolderTree, 
@@ -25,11 +25,16 @@ export const StructureView: React.FC<StructureViewProps> = ({
   project,
   onUpdateProject
 }) => {
-  const [structureText, setStructureText] = useState(project.folderStructureText);
+  const [structureText, setStructureText] = useState(project.folderStructureText || '');
   const [copiedTree, setCopiedTree] = useState(false);
   const [copiedBash, setCopiedBash] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [mode, setMode] = useState<'text' | 'scaffold'>('text');
+
+  // Sync state when project changes
+  useEffect(() => {
+    setStructureText(project.folderStructureText || '');
+  }, [project.id, project.folderStructureText]);
 
   // Generate runnable bash script to create the folders and files
   const generateBashScaffold = () => {

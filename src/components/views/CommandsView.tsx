@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, CommandItem } from '../../types';
 import { 
   Terminal, 
@@ -23,10 +23,15 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
   project,
   onUpdateProject
 }) => {
-  const [commands, setCommands] = useState<CommandItem[]>(project.commands);
+  const [commands, setCommands] = useState<CommandItem[]>(project.commands || []);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  
+  // Sync with prop when project updates
+  useEffect(() => {
+    setCommands(project.commands || []);
+  }, [project.id, project.commands]);
   
   // New command modal state
   const [showAddForm, setShowAddForm] = useState(false);

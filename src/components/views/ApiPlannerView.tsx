@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, ApiEndpoint } from '../../types';
 import { 
   Network, 
@@ -22,8 +22,13 @@ export const ApiPlannerView: React.FC<ApiPlannerViewProps> = ({
   project,
   onUpdateProject
 }) => {
-  const [endpoints, setEndpoints] = useState<ApiEndpoint[]>(project.apiEndpoints);
+  const [endpoints, setEndpoints] = useState<ApiEndpoint[]>(project.apiEndpoints || []);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Sync state when project changes
+  useEffect(() => {
+    setEndpoints(project.apiEndpoints || []);
+  }, [project.id, project.apiEndpoints]);
   
   // Form states
   const [newMethod, setNewMethod] = useState<ApiEndpoint['method']>('GET');
