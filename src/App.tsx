@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, Project, ActiveTab } from './types';
 import { 
-  getStoredUser, 
-  clearStoredSession, 
-  loadUserProjects, 
-  saveProjectToStorage, 
-  deleteProjectFromStorage,
-  DEMO_ADMIN_USER 
+  UserProfile, 
+  Project, 
+  ActiveTab 
+} from './types';
+import { 
+  subscribeToAuth, 
+  subscribeToUserProjects, 
+  saveProjectToFirestore, 
+  deleteProjectFromFirestore, 
+  logoutUser,
+  firebaseConfig 
 } from './lib/firebase';
-import { INITIAL_PROJECTS } from './data/defaultProjects';
+import { LoginSection } from './components/LoginSection';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
-import { LoginSection } from './components/LoginSection';
 import { OverviewView } from './components/views/OverviewView';
 import { ArchitectureView } from './components/views/ArchitectureView';
 import { StructureView } from './components/views/StructureView';
@@ -21,377 +24,444 @@ import { TimelineView } from './components/views/TimelineView';
 import { FirestoreDataView } from './components/views/FirestoreDataView';
 import { ProjectsListView } from './components/views/ProjectsListView';
 import { ProjectModal } from './components/modals/ProjectModal';
+import { FolderPlus, Plus, Database, Sparkles, Loader2 } from 'lucide-react';
 
-export default function App() {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    return getStoredUser() || DEMO_ADMIN_USER; // Direct admin ready by default for instant frictionless preview!
-  });
-
-  const [projects, setProjects] = useState<Project[]>(() => {
-    // Check local storage or initialize with rich initial blueprints
-    try {
-      const stored = localStorage.getItem('archplan_projects_data');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+export function createNewProjectObject(meta: Partial<Project>): Project {
+  const id = 'proj_' + Date.now();
+  const now = new Date().toISOString();
+  return {
+    id,
+    title: meta.title || 'New Software Blueprint',
+    tagline: meta.tagline || 'Modern software architecture plan',
+    purpose: meta.purpose || 'Software solution addressing business requirements with clean architecture.',
+    targetAudience: meta.targetAudience || 'End users & developers',
+    category: meta.category || 'fullstack',
+    status: meta.status || 'planning',
+    createdAt: now,
+    updatedAt: now,
+    techStack: {
+      frontend: {
+        framework: 'React with TypeScript',
+        styling: 'Tailwind CSS',
+        stateManager: 'React State & Context',
+        buildTool: 'Vite',
+        why: 'Fast bundling, modular components, and type safety.'
+      },
+      backend: {
+        type: 'firestore-direct',
+        runtime: 'Client-side Firebase SDK',
+        framework: 'Direct Firestore Database Transactions',
+        why: 'No backend server maintenance; zero downtime, serverless & real-time.'
+      },
+      database: {
+        primary: 'Google Cloud Firestore',
+        type: 'nosql-document',
+        caching: 'IndexedDB & Local Cache',
+        why: 'Direct document sync, real-time listeners, and automatic scaling.'
+      },
+      auth: {
+        provider: 'Firebase Authentication',
+        type: 'Email & Password',
+        why: 'Enterprise identity security with zero custom auth server.'
+      },
+      hosting: {
+        platform: 'Firebase Hosting / Cloud Run',
+        ciCd: 'GitHub Actions / Cloud Build',
+        domainCdn: 'Global Edge CDN',
+        why: 'Instant global deployment and high availability.'
       }
-    } catch (e) {}
-    return INITIAL_PROJECTS;
-  });
+    },
+    folderStructureText: `src/
+├── components/
+│   ├── ui/
+│   └── views/
+├── lib/
+│   └── firebase.ts
+├── types.ts
+├── App.tsx
+└── main.tsx`,
+    folderTree: [
+      {
+        id: 'f_src',
+        name: 'src',
+        type: 'folder',
+        path: '/src',
+        description: 'Source code root',
+        children: [
+          {
+            id: 'f_components',
+            name: 'components',
+            type: 'folder',
+            path: '/src/components',
+            description: 'UI components directory'
+          },
+          {
+            id: 'f_lib',
+            name: 'lib',
+            type: 'folder',
+            path: '/src/lib',
+            description: 'Firebase and helper libraries'
+          },
+          {
+            id: 'f_app',
+            name: 'App.tsx',
+            type: 'file',
+            path: '/src/App.tsx',
+            description: 'Main App Component'
+          }
+        ]
+      }
+    ],
+    commands: [
+      {
+        id: 'cmd_1',
+        title: 'Project Scaffold',
+        cmd: 'npm create vite@latest my-app -- --template react-ts',
+        category: 'scaffold',
+        description: 'Initialize Vite React project with TypeScript'
+      },
+      {
+        id: 'cmd_2',
+        title: 'Install Firebase & UI Dependencies',
+        cmd: 'npm install firebase lucide-react tailwindcss @tailwindcss/vite',
+        category: 'dependencies',
+        description: 'Install client dependencies'
+      },
+      {
+        id: 'cmd_3',
+        title: 'Start Development Server',
+        cmd: 'npm run dev',
+        category: 'dev',
+        description: 'Run live hot-reload development server'
+      }
+    ],
+    apiEndpoints: [
+      {
+        id: 'api_1',
+        method: 'GET',
+        path: '/users/{uid}/projects',
+        summary: 'Direct Firestore fetch for user projects',
+        authRequired: true,
+        estimatedHours: 2,
+        responseSample: '{\n  "status": "success",\n  "count": 1\n}'
+      }
+    ],
+    timeline: {
+      designDays: 3,
+      frontendDays: 7,
+      backendDays: 2,
+      testingDays: 3,
+      deploymentDays: 1,
+      totalEstimatedWeeks: 3,
+      estimatedBudget: '₹25,000 - ₹50,000',
+      milestones: [
+        {
+          id: 'm_1',
+          title: 'Database Schema & Auth Setup',
+          weekNumber: 1,
+          completed: false,
+          deliverables: 'Firebase project initialized with Firestore rules'
+        },
+        {
+          id: 'm_2',
+          title: 'Core Frontend Screens & State',
+          weekNumber: 2,
+          completed: false,
+          deliverables: 'Interactive dashboard and input forms'
+        },
+        {
+          id: 'm_3',
+          title: 'Production Testing & Launch',
+          weekNumber: 3,
+          completed: false,
+          deliverables: 'Tested and deployed live on web'
+        }
+      ]
+    },
+    notes: 'Created via direct frontend Firestore client sync.',
+    syncStatus: 'synced'
+  };
+}
 
-  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
-    return projects[0]?.id || 'proj_saas_crm_01';
-  });
+export function App() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
+  // Projects list directly from Firestore
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
+  // Active view tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
-  const [isSavingFirestore, setIsSavingFirestore] = useState(false);
-  const [projectModalOpen, setProjectModalOpen] = useState(false);
+
+  // Modal states
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
 
-  // Sync projects with Firestore when user is logged in
+  // Status message
+  const [statusNotification, setStatusNotification] = useState<string | null>(null);
+
+  // 1. Listen to Firebase Auth state
   useEffect(() => {
-    if (user && !user.isDemo) {
-      loadUserProjects(user.uid).then(result => {
-        if (result.projects && result.projects.length > 0) {
-          setProjects(result.projects);
-          if (!result.projects.find(p => p.id === activeProjectId)) {
-            setActiveProjectId(result.projects[0].id);
-          }
-        }
-      });
+    const unsubscribe = subscribeToAuth((currentUser) => {
+      setUser(currentUser);
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Real-time Firestore sync for user projects
+  useEffect(() => {
+    if (!user) {
+      setProjects([]);
+      setActiveProjectId(null);
+      return;
     }
+
+    setLoadingProjects(true);
+    const unsubscribe = subscribeToUserProjects(
+      user.uid,
+      (fetchedProjects) => {
+        setProjects(fetchedProjects);
+        setLoadingProjects(false);
+        // Ensure an active project is selected if available
+        setActiveProjectId((prev) => {
+          if (prev && fetchedProjects.some((p) => p.id === prev)) {
+            return prev;
+          }
+          return fetchedProjects[0]?.id || null;
+        });
+      },
+      (err) => {
+        console.error('Error in Firestore live sync:', err);
+        setLoadingProjects(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [user?.uid]);
 
-  // Persist projects to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem('archplan_projects_data', JSON.stringify(projects));
-    } catch (e) {}
-  }, [projects]);
-
-  const activeProject = projects.find(p => p.id === activeProjectId) || projects[0] || null;
-
-  const handleLoginSuccess = (loggedInUser: UserProfile) => {
-    setUser(loggedInUser);
+  const showNotification = (msg: string) => {
+    setStatusNotification(msg);
+    setTimeout(() => setStatusNotification(null), 3000);
   };
 
-  const handleLogout = () => {
-    clearStoredSession();
-    setUser(null);
-  };
+  // Active project selection
+  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || null;
 
-  const handleUpdateProject = async (updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-    if (user) {
-      setIsSavingFirestore(true);
-      await saveProjectToStorage(user.uid, updatedProject);
-      setIsSavingFirestore(false);
-    }
-  };
-
-  const handleSaveToFirestore = async () => {
-    if (!user || !activeProject) return;
-    setIsSavingFirestore(true);
-    await saveProjectToStorage(user.uid, activeProject);
-    setTimeout(() => {
-      setIsSavingFirestore(false);
-    }, 400);
+  // Project handlers
+  const handleSelectProject = (id: string) => {
+    setActiveProjectId(id);
   };
 
   const handleNewProject = () => {
     setProjectToEdit(null);
-    setProjectModalOpen(true);
+    setIsProjectModalOpen(true);
   };
 
-  const handleEditProjectModal = (proj?: Project) => {
-    setProjectToEdit(proj || activeProject);
-    setProjectModalOpen(true);
+  const handleEditProjectModal = (proj: Project) => {
+    setProjectToEdit(proj);
+    setIsProjectModalOpen(true);
   };
 
-  const handleSaveProjectModal = async (projectData: Partial<Project>) => {
+  const handleSaveProjectModal = async (meta: Partial<Project>) => {
+    if (!user) return;
+
     if (projectToEdit) {
-      // Editing existing project
+      // Update existing project
       const updated: Project = {
         ...projectToEdit,
-        ...projectData,
+        ...meta,
         updatedAt: new Date().toISOString()
       };
-      await handleUpdateProject(updated);
+      await saveProjectToFirestore(user.uid, updated);
+      showNotification(`Project "${updated.title}" updated in Firestore!`);
     } else {
-      // Creating a brand new project
-      const newProjId = 'proj_' + Date.now();
-      const newProj: Project = {
-        id: newProjId,
-        title: projectData.title || 'Untitled Web Application',
-        tagline: projectData.tagline || 'Modern responsive application',
-        purpose: projectData.purpose || 'Solving core client requirements with clean scalable architecture.',
-        targetAudience: projectData.targetAudience || 'Web and mobile end users',
-        category: projectData.category || 'fullstack',
-        status: projectData.status || 'planning',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        techStack: {
-          frontend: {
-            framework: 'React 19 with TypeScript',
-            styling: 'Tailwind CSS v4 with Lucide Icons',
-            stateManager: 'React Context / Zustand',
-            buildTool: 'Vite 6.x',
-            why: 'Fast bundling, reactive state updates, and flexible UI styling.'
-          },
-          backend: {
-            type: 'firestore-direct',
-            runtime: 'Client-managed Firebase SDK v12',
-            framework: 'Firestore Real-time Queries & Security Rules',
-            why: 'Zero backend server maintenance, automatic scaling, sub-100ms sync.'
-          },
-          database: {
-            primary: 'Google Cloud Firestore',
-            type: 'nosql-document',
-            caching: 'IndexedDB & LocalStorage',
-            why: 'Real-time multi-device document updates and offline tolerance.'
-          },
-          auth: {
-            provider: 'Firebase Authentication',
-            type: 'Email & Password / OAuth',
-            why: 'Frictionless user identity and secure role enforcement.'
-          },
-          hosting: {
-            platform: 'Cloud Run / Firebase Hosting',
-            ciCd: 'GitHub Actions Pipeline',
-            domainCdn: 'Global Edge CDN',
-            why: 'Automatic SSL certificates and scale-to-zero compute cost.'
-          }
-        },
-        folderStructureText: `${(projectData.title || 'new-app').toLowerCase().replace(/\s+/g, '-')}/
-├── public/
-│   └── favicon.ico
-├── src/
-│   ├── components/
-│   │   ├── layout/
-│   │   └── ui/
-│   ├── lib/
-│   │   └── firebase.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css
-├── firestore.rules
-└── package.json`,
-        folderTree: [
-          { id: 'f1', name: 'src', type: 'folder', path: '/src', description: 'Application source files' },
-          { id: 'f2', name: 'firestore.rules', type: 'file', path: '/firestore.rules', description: 'Security access rules' }
-        ],
-        commands: [
-          {
-            id: 'c1_' + Date.now(),
-            category: 'scaffold',
-            title: 'Create Vite Project Scaffolding',
-            cmd: `npm create vite@latest ${(projectData.title || 'app').toLowerCase().replace(/\s+/g, '-')} -- --template react-ts`,
-            description: 'Scaffolds clean React TypeScript workspace'
-          },
-          {
-            id: 'c2_' + Date.now(),
-            category: 'dependencies',
-            title: 'Install Firebase & Dependencies',
-            cmd: 'npm install firebase lucide-react motion',
-            description: 'Official Firebase SDK and UI libraries'
-          },
-          {
-            id: 'c3_' + Date.now(),
-            category: 'dev',
-            title: 'Launch Development Server',
-            cmd: 'npm run dev',
-            description: 'Starts Vite dev server on port 3000'
-          }
-        ],
-        apiEndpoints: [
-          {
-            id: 'api_' + Date.now(),
-            method: 'GET',
-            path: 'firestore://users/{userId}/data',
-            summary: 'Fetch user profile and documents',
-            authRequired: true,
-            estimatedHours: 3
-          }
-        ],
-        timeline: {
-          designDays: 3,
-          frontendDays: 7,
-          backendDays: 3,
-          testingDays: 3,
-          deploymentDays: 1,
-          totalEstimatedWeeks: 3,
-          estimatedBudget: '$3,000 USD',
-          milestones: [
-            { id: 'm1_' + Date.now(), title: 'Phase 1: Architecture & Auth Setup', weekNumber: 1, completed: false, deliverables: 'Firebase configuration and dashboard UI shell.' },
-            { id: 'm2_' + Date.now(), title: 'Phase 2: Core Data Sync & APIs', weekNumber: 2, completed: false, deliverables: 'Firestore collections and CRUD operations.' },
-            { id: 'm3_' + Date.now(), title: 'Phase 3: QA & Production Deploy', weekNumber: 3, completed: false, deliverables: 'Security rules audit and CDN deployment.' }
-          ]
-        },
-        notes: 'Project created via Architecture Planner.'
-      };
-
-      const updatedList = [newProj, ...projects];
-      setProjects(updatedList);
-      setActiveProjectId(newProjId);
-      setActiveTab('overview');
-
-      if (user) {
-        setIsSavingFirestore(true);
-        await saveProjectToStorage(user.uid, newProj);
-        setIsSavingFirestore(false);
-      }
+      // Create new project
+      const newProj = createNewProjectObject(meta);
+      await saveProjectToFirestore(user.uid, newProj);
+      setActiveProjectId(newProj.id);
+      showNotification(`New Project "${newProj.title}" saved to Firestore!`);
     }
+  };
+
+  const handleUpdateActiveProject = async (updated: Project) => {
+    if (!user) return;
+    await saveProjectToFirestore(user.uid, updated);
+    showNotification('Changes saved live to Firestore');
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (projects.length <= 1) return;
-    const remaining = projects.filter(p => p.id !== id);
-    setProjects(remaining);
-    if (activeProjectId === id) {
-      setActiveProjectId(remaining[0].id);
-    }
-    if (user) {
-      await deleteProjectFromStorage(user.uid, id);
-    }
+    if (!user) return;
+    const proj = projects.find((p) => p.id === id);
+    const confirmed = window.confirm(`Kya aap "${proj?.title || 'yeh project'}" ko Firestore se delete karna chahte hain?`);
+    if (!confirmed) return;
+
+    await deleteProjectFromFirestore(user.uid, id);
+    showNotification('Project deleted from Firestore');
   };
 
   const handleDuplicateProject = async (proj: Project) => {
-    const cloneId = 'proj_' + Date.now();
-    const cloned: Project = {
+    if (!user) return;
+    const duplicated: Project = {
       ...proj,
-      id: cloneId,
+      id: 'proj_' + Date.now(),
       title: `${proj.title} (Copy)`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    const updatedList = [cloned, ...projects];
-    setProjects(updatedList);
-    setActiveProjectId(cloneId);
-    if (user) {
-      await saveProjectToStorage(user.uid, cloned);
-    }
+    await saveProjectToFirestore(user.uid, duplicated);
+    setActiveProjectId(duplicated.id);
+    showNotification('Project duplicated in Firestore');
   };
 
-  // If user not authenticated, show LoginSection
-  if (!user) {
-    return <LoginSection onLoginSuccess={handleLoginSuccess} />;
+  const handleLogout = async () => {
+    await logoutUser();
+    setUser(null);
+    setProjects([]);
+    setActiveProjectId(null);
+  };
+
+  // Loading auth state
+  if (loadingAuth) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-center items-center gap-3">
+        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+        <p className="text-xs text-slate-400 font-medium tracking-wide">
+          Verifying Firebase connection...
+        </p>
+      </div>
+    );
   }
 
+  // Not logged in -> Show ONLY login
+  if (!user) {
+    return <LoginSection onLoginSuccess={(u) => setUser(u)} />;
+  }
+
+  // Logged in user dashboard
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-900 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
       
-      {/* 1. Top Bar / Navbar (with Top-Left Profile Icon as requested) */}
+      {/* Top Navigation Bar */}
       <Navbar
         user={user}
         projects={projects}
         activeProject={activeProject}
-        onSelectProject={(id) => {
-          setActiveProjectId(id);
-          setActiveTab('overview');
-        }}
+        onSelectProject={handleSelectProject}
         onNewProject={handleNewProject}
         onLogout={handleLogout}
-        onSaveToFirestore={handleSaveToFirestore}
-        isSaving={isSavingFirestore}
       />
 
-      {/* 2. Main Body with Responsive Sidebar & Content */}
+      {/* Main Workspace with Sidebar */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* Left Vertical Navigation (Responsive: compact icon strip on mobile, full sidebar on desktop) */}
+        {/* Left Sidebar */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           projectCount={projects.length}
-          apiCount={activeProject?.apiEndpoints.length || 0}
-          commandCount={activeProject?.commands.length || 0}
+          apiCount={activeProject?.apiEndpoints?.length || 0}
+          commandCount={activeProject?.commands?.length || 0}
         />
 
-        {/* Main Workspace Viewport */}
-        <main className="flex-1 p-3.5 sm:p-6 md:p-8 overflow-y-auto bg-slate-950/60">
-          {activeProject ? (
-            <>
-              {activeTab === 'overview' && (
-                <OverviewView
-                  project={activeProject}
-                  onNavigateTab={setActiveTab}
-                  onEditProject={() => handleEditProjectModal(activeProject)}
-                />
-              )}
-
-              {activeTab === 'tech-stack' && (
-                <ArchitectureView
-                  project={activeProject}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'structure' && (
-                <StructureView
-                  project={activeProject}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'commands' && (
-                <CommandsView
-                  project={activeProject}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'apis' && (
-                <ApiPlannerView
-                  project={activeProject}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'timeline' && (
-                <TimelineView
-                  project={activeProject}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'firestore-data' && (
-                <FirestoreDataView
-                  user={user}
-                  project={activeProject}
-                  onUpdateUserMessage={(msg) => setUser({ ...user, customMessage: msg })}
-                  onUpdateProject={handleUpdateProject}
-                />
-              )}
-
-              {activeTab === 'projects-list' && (
-                <ProjectsListView
-                  projects={projects}
-                  activeProjectId={activeProjectId}
-                  onSelectProject={(id) => {
-                    setActiveProjectId(id);
-                    setActiveTab('overview');
-                  }}
-                  onNewProject={handleNewProject}
-                  onDeleteProject={handleDeleteProject}
-                  onDuplicateProject={handleDuplicateProject}
-                  onEditProject={(proj) => handleEditProjectModal(proj)}
-                />
-              )}
-            </>
-          ) : (
-            <div className="p-12 text-center text-slate-400">
-              No project selected. Click "+ Create New Project" to start.
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
+          
+          {/* Live Notification Banner */}
+          {statusNotification && (
+            <div className="fixed bottom-5 right-5 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl shadow-emerald-950/50 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <Sparkles className="w-4 h-4" />
+              <span>{statusNotification}</span>
             </div>
           )}
+
+          {/* Conditional View Rendering */}
+          {activeTab === 'firestore-data' ? (
+            <FirestoreDataView
+              user={user}
+              project={activeProject}
+              onUpdateUserMessage={(msg) => setUser(prev => prev ? { ...prev, customMessage: msg } : null)}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'projects-list' ? (
+            <ProjectsListView
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSelectProject={(id) => {
+                handleSelectProject(id);
+                setActiveTab('overview');
+              }}
+              onNewProject={handleNewProject}
+              onDeleteProject={handleDeleteProject}
+              onDuplicateProject={handleDuplicateProject}
+              onEditProject={handleEditProjectModal}
+            />
+          ) : !activeProject ? (
+            /* Empty clean state when user has 0 projects in Firestore */
+            <div className="max-w-xl mx-auto my-12 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4 shadow-xl">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                <FolderPlus className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-white">
+                Dashboard Clean & Ready
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Aapka Firebase account (<span className="text-emerald-400 font-semibold">{user.email}</span>) direct Google Firestore (<code className="font-mono text-emerald-300">{firebaseConfig.projectId}</code>) se connected hai.
+              </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Abhi dashboard me koi dummy project nahi hai. Niche button par click karke apna software project add karein — aap jo bhi tech stack, commands, API endpoints ya notes likhenge, wo sidha aapke Firestore me live save honge!
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={handleNewProject}
+                  className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-900/40 inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  + Naya Project Banayein
+                </button>
+              </div>
+            </div>
+          ) : activeTab === 'overview' ? (
+            <OverviewView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'tech-stack' ? (
+            <ArchitectureView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'structure' ? (
+            <StructureView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'commands' ? (
+            <CommandsView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'apis' ? (
+            <ApiPlannerView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : activeTab === 'timeline' ? (
+            <TimelineView
+              project={activeProject}
+              onUpdateProject={handleUpdateActiveProject}
+            />
+          ) : null}
+
         </main>
       </div>
 
       {/* Project Create / Edit Modal */}
       <ProjectModal
-        isOpen={projectModalOpen}
-        onClose={() => setProjectModalOpen(false)}
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
         onSave={handleSaveProjectModal}
         projectToEdit={projectToEdit}
       />
@@ -399,3 +469,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;

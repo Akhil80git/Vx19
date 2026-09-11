@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, Project } from '../../types';
-import { saveUserCustomData, saveProjectToStorage, firebaseConfig } from '../../lib/firebase';
-import { Database, Save, CheckCircle2, AlertCircle, Clock, ShieldCheck, Sparkles } from 'lucide-react';
+import { saveUserCustomData, saveProjectToFirestore, firebaseConfig } from '../../lib/firebase';
+import { Database, Save, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 
 interface FirestoreDataViewProps {
   user: UserProfile;
-  project: Project;
+  project: Project | null;
   onUpdateUserMessage?: (msg: string) => void;
   onUpdateProject?: (updated: Project) => void;
 }
@@ -16,11 +16,11 @@ export const FirestoreDataView: React.FC<FirestoreDataViewProps> = ({
   onUpdateUserMessage,
   onUpdateProject
 }) => {
-  const [userInput, setUserInput] = useState(user.customMessage || project.notes || '');
+  const [userInput, setUserInput] = useState(user.customMessage || project?.notes || '');
   const [saveMsg, setSaveMsg] = useState<{ text: string; type: 'success' | 'error' | '' }>({ text: '', type: '' });
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<Array<{ text: string; time: string }>>([
-    { text: user.customMessage || 'Initial architecture specs generated', time: 'Just now' }
+    { text: user.customMessage || 'Initial Firestore live sync ready', time: 'Just now' }
   ]);
 
   useEffect(() => {
@@ -35,23 +35,19 @@ export const FirestoreDataView: React.FC<FirestoreDataViewProps> = ({
     setSaving(true);
 
     try {
-      // 1. Save user custom message to Firestore document users/{uid}
-      const userSaved = await saveUserCustomData(user.uid, userInput);
+      // 1. Direct save user custom message to Firestore document users/{uid}
+      await saveUserCustomData(user.uid, userInput);
 
-      // 2. Also save to current project notes
-      if (onUpdateProject) {
-        onUpdateProject({
+      // 2. Also save to current project notes if a project is active
+      if (project && onUpdateProject) {
+        const updatedProject = {
           ...project,
           notes: userInput,
           updatedAt: new Date().toISOString()
-        });
+        };
+        onUpdateProject(updatedProject);
+        await saveProjectToFirestore(user.uid, updatedProject);
       }
-
-      // 3. Save full project to Firestore
-      const projResult = await saveProjectToStorage(user.uid, {
-        ...project,
-        notes: userInput
-      });
 
       if (onUpdateUserMessage) {
         onUpdateUserMessage(userInput);
@@ -60,14 +56,12 @@ export const FirestoreDataView: React.FC<FirestoreDataViewProps> = ({
       setHistory(prev => [{ text: userInput, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 4)]);
 
       setSaveMsg({
-        text: projResult.firestoreSaved 
-          ? 'Data Firestore me successfully save ho gaya!' 
-          : 'Data local storage & cache me successfully save ho gaya!',
+        text: 'Data Firestore me successfully live save ho gaya!',
         type: 'success'
       });
     } catch (err: any) {
       console.error(err);
-      setSaveMsg({ text: 'Data save karne me error aayi! (' + err.message + ')', type: 'error' });
+      setSaveMsg({ text: 'Data save karne me error aayi: ' + (err?.message || err), type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -99,7 +93,7 @@ export const FirestoreDataView: React.FC<FirestoreDataViewProps> = ({
           </div>
           <div className="overflow-hidden">
             <b className="block text-sm text-white truncate">
-              {user.email || 'admin@softwareplanner.io'}
+              {user.email}
             </b>
             <span className="text-xs text-emerald-400 font-medium">
               Role: {user.role || 'admin'}
@@ -143,7 +137,7 @@ export const FirestoreDataView: React.FC<FirestoreDataViewProps> = ({
             )}
           </button>
 
-          {/* Feedback message (save-msg from user snippet) */}
+          {/* Feedback message */}
           {saveMsg.text && (
             <div
               id="save-msg"

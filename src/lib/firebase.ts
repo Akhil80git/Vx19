@@ -2,7 +2,6 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
   signOut as fbSignOut, 
   onAuthStateChanged as fbOnAuthStateChanged,
   User as FirebaseUser
@@ -13,7 +12,7 @@ import {
   getDoc, 
   setDoc, 
   collection, 
-  getDocs, 
+  onSnapshot, 
   deleteDoc
 } from 'firebase/firestore';
 import { UserProfile, Project } from '../types';
@@ -28,117 +27,162 @@ export const firebaseConfig = {
   measurementId: "G-XTMCE9THQQ"
 };
 
-// Initialize Firebase safely
+// Initialize Firebase directly on the client (No backend server required!)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Local storage key constants
-const STORAGE_KEY_USER = 'archplan_user_session';
-const STORAGE_KEY_PROJECTS = 'archplan_projects_data';
-const STORAGE_KEY_ACTIVE_PROJECT_ID = 'archplan_active_project_id';
-
-// Default Admin Mock for instant 1-click test without forcing registration
-export const DEMO_ADMIN_USER: UserProfile = {
-  uid: 'admin_demo_super_user',
-  email: 'admin@softwareplanner.io',
-  role: 'admin',
-  displayName: 'Admin Architect',
-  isDemo: true,
-  customMessage: 'System architecture planner initialized with Firestore and client-side management.'
-};
-
-export async function loginWithEmail(email: string, pass: string): Promise<UserProfile> {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    const user = userCredential.user;
-    
-    // Fetch profile from Firestore
-    let role: UserProfile['role'] = 'admin';
-    let customMessage = '';
+// Authentication listener
+export function subscribeToAuth(callback: (user: UserProfile | null) => void) {
+  return fbOnAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+    if (!fbUser) {
+      callback(null);
+      return;
+    }
 
     try {
-      const userDocRef = doc(db, "users", user.uid);
+      let role: UserProfile['role'] = 'admin';
+      let customMessage = '';
+
+      const userDocRef = doc(db, "users", fbUser.uid);
       const userDocSnap = await getDoc(userDocRef);
+      
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
         role = data.role || 'admin';
         customMessage = data.customMessage || '';
       } else {
-        // Save initial user doc
+        // Save user doc upon initial sign in
         await setDoc(userDocRef, {
-          email: user.email,
+          email: fbUser.email,
           role: 'admin',
           createdAt: new Date().toISOString()
         }, { merge: true });
       }
-    } catch (fsErr) {
-      console.warn('Firestore read error (using auth details):', fsErr);
+
+      const profile: UserProfile = {
+        uid: fbUser.uid,
+        email: fbUser.email || '',
+        role: role,
+        displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
+        customMessage: customMessage,
+        lastLogin: new Date().toISOString()
+      };
+
+      callback(profile);
+    } catch (err) {
+      console.error('Error fetching user profile from Firestore:', err);
+      // Fallback to basic auth info if Firestore rules block or offline
+      callback({
+        uid: fbUser.uid,
+        email: fbUser.email || '',
+        role: 'admin',
+        displayName: fbUser.email?.split('@')[0] || 'Admin',
+        lastLogin: new Date().toISOString()
+      });
     }
-
-    const profile: UserProfile = {
-      uid: user.uid,
-      email: user.email || email,
-      role: role,
-      displayName: user.displayName || user.email?.split('@')[0] || 'Admin',
-      isDemo: false,
-      customMessage: customMessage,
-      lastLogin: new Date().toISOString()
-    };
-
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
-    return profile;
-  } catch (error: any) {
-    throw error;
-  }
+  });
 }
 
-export async function signupWithEmail(email: string, pass: string, role: UserProfile['role'] = 'admin'): Promise<UserProfile> {
+// Pure Client-side Login (Only login with user credentials added in Firebase Console)
+export async function loginWithEmail(email: string, pass: string): Promise<UserProfile> {
+  const userCredential = await signInWithEmailAndPassword(auth, email.trim(), pass);
+  const fbUser = userCredential.user;
+
+  let role: UserProfile['role'] = 'admin';
+  let customMessage = '';
+
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    const user = userCredential.user;
-
-    const profile: UserProfile = {
-      uid: user.uid,
-      email: user.email || email,
-      role: role,
-      displayName: user.email?.split('@')[0] || 'User',
-      isDemo: false,
-      lastLogin: new Date().toISOString()
-    };
-
-    try {
-      const userDocRef = doc(db, "users", user.uid);
+    const userDocRef = doc(db, "users", fbUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      const data = userDocSnap.data();
+      role = data.role || 'admin';
+      customMessage = data.customMessage || '';
+    } else {
       await setDoc(userDocRef, {
-        email: user.email,
-        role: role,
+        email: fbUser.email,
+        role: 'admin',
         createdAt: new Date().toISOString()
       }, { merge: true });
-    } catch (fsErr) {
-      console.warn('Firestore save profile error:', fsErr);
     }
+  } catch (fsErr) {
+    console.warn('Firestore initial sync note:', fsErr);
+  }
 
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
-    return profile;
-  } catch (error: any) {
-    throw error;
+  const profile: UserProfile = {
+    uid: fbUser.uid,
+    email: fbUser.email || email,
+    role: role,
+    displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
+    customMessage: customMessage,
+    lastLogin: new Date().toISOString()
+  };
+
+  return profile;
+}
+
+// Sign Out
+export async function logoutUser(): Promise<void> {
+  await fbSignOut(auth);
+}
+
+// Live real-time Firestore synchronization for all projects of this user
+export function subscribeToUserProjects(
+  uid: string, 
+  onUpdate: (projects: Project[]) => void,
+  onError?: (error: any) => void
+) {
+  const projectsColRef = collection(db, "users", uid, "projects");
+  
+  return onSnapshot(
+    projectsColRef, 
+    (snapshot) => {
+      const projects: Project[] = [];
+      snapshot.forEach((d) => {
+        projects.push({ ...d.data(), id: d.id } as Project);
+      });
+      // Sort by updatedAt descending
+      projects.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+      onUpdate(projects);
+    },
+    (err) => {
+      console.error('Firestore onSnapshot error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+// Save or Update Project directly in Firestore
+export async function saveProjectToFirestore(uid: string, project: Project): Promise<{ success: boolean; error?: string }> {
+  try {
+    const projectDocRef = doc(db, "users", uid, "projects", project.id);
+    await setDoc(projectDocRef, {
+      ...project,
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'synced'
+    }, { merge: true });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Firestore save project error:', err);
+    return { success: false, error: err?.message || 'Firestore save failed' };
   }
 }
 
-export async function saveUserCustomData(uid: string, customMessage: string): Promise<boolean> {
-  // Update local storage
-  const stored = localStorage.getItem(STORAGE_KEY_USER);
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    parsed.customMessage = customMessage;
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(parsed));
-  }
-
-  // If demo user or offline, local update is enough
-  if (uid.startsWith('admin_demo')) {
+// Delete Project from Firestore
+export async function deleteProjectFromFirestore(uid: string, projectId: string): Promise<boolean> {
+  try {
+    const projectDocRef = doc(db, "users", uid, "projects", projectId);
+    await deleteDoc(projectDocRef);
     return true;
+  } catch (err) {
+    console.error('Firestore delete project error:', err);
+    return false;
   }
+}
 
+// Save User Custom Note/Message in Firestore (users/{uid})
+export async function saveUserCustomData(uid: string, customMessage: string): Promise<boolean> {
   try {
     const userDocRef = doc(db, "users", uid);
     await setDoc(userDocRef, {
@@ -147,109 +191,7 @@ export async function saveUserCustomData(uid: string, customMessage: string): Pr
     }, { merge: true });
     return true;
   } catch (err) {
-    console.error('Firestore save failed:', err);
+    console.error('Firestore custom data error:', err);
     return false;
   }
-}
-
-export async function saveProjectToStorage(uid: string, project: Project): Promise<{ success: boolean; firestoreSaved: boolean; error?: string }> {
-  // 1. Save to local storage for instant reliability
-  try {
-    const localData = getLocalProjects();
-    const existingIndex = localData.findIndex(p => p.id === project.id);
-    if (existingIndex >= 0) {
-      localData[existingIndex] = { ...project, updatedAt: new Date().toISOString() };
-    } else {
-      localData.unshift({ ...project, updatedAt: new Date().toISOString() });
-    }
-    localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(localData));
-  } catch (e) {
-    console.error('Local storage save error:', e);
-  }
-
-  // 2. Save to Firestore if authenticated
-  if (uid.startsWith('admin_demo')) {
-    return { success: true, firestoreSaved: false };
-  }
-
-  try {
-    const projectDocRef = doc(db, "users", uid, "projects", project.id);
-    await setDoc(projectDocRef, {
-      ...project,
-      updatedAt: new Date().toISOString(),
-      syncStatus: 'synced'
-    }, { merge: true });
-    return { success: true, firestoreSaved: true };
-  } catch (err: any) {
-    console.warn('Firestore project save warning:', err);
-    return { success: true, firestoreSaved: false, error: err?.message };
-  }
-}
-
-export async function loadUserProjects(uid: string): Promise<{ projects: Project[]; fromFirestore: boolean }> {
-  const localProjects = getLocalProjects();
-
-  if (uid.startsWith('admin_demo')) {
-    return { projects: localProjects, fromFirestore: false };
-  }
-
-  try {
-    const projectsColRef = collection(db, "users", uid, "projects");
-    const snapshot = await getDocs(projectsColRef);
-    if (!snapshot.empty) {
-      const fsProjects: Project[] = [];
-      snapshot.forEach(docSnap => {
-        fsProjects.push(docSnap.data() as Project);
-      });
-      // Update local storage with fresh remote data
-      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(fsProjects));
-      return { projects: fsProjects, fromFirestore: true };
-    }
-  } catch (err) {
-    console.warn('Firestore read projects error (using local storage):', err);
-  }
-
-  return { projects: localProjects, fromFirestore: false };
-}
-
-export async function deleteProjectFromStorage(uid: string, projectId: string): Promise<boolean> {
-  // Delete from local
-  const local = getLocalProjects().filter(p => p.id !== projectId);
-  localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(local));
-
-  if (!uid.startsWith('admin_demo')) {
-    try {
-      const projectDocRef = doc(db, "users", uid, "projects", projectId);
-      await deleteDoc(projectDocRef);
-    } catch (e) {
-      console.warn('Firestore delete project error:', e);
-    }
-  }
-  return true;
-}
-
-export function getLocalProjects(): Project[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_PROJECTS);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.error('Error parsing local projects:', e);
-  }
-  return [];
-}
-
-export function getStoredUser(): UserProfile | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_USER);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch (e) {}
-  return null;
-}
-
-export function clearStoredSession() {
-  localStorage.removeItem(STORAGE_KEY_USER);
 }

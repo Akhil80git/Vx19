@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
 import { UserProfile, Project } from '../types';
 import { 
-  ShieldCheck, 
   FolderPlus, 
   LogOut, 
   ChevronDown, 
   Database, 
   CheckCircle2, 
-  Cloud, 
   Layers, 
-  Sparkles,
-  User,
-  Sliders,
   X
 } from 'lucide-react';
 
@@ -39,7 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
-  const initialLetter = (user.email || 'Admin').charAt(0).toUpperCase();
+  const initialLetter = (user.email || 'A').charAt(0).toUpperCase();
 
   return (
     <>
@@ -65,8 +60,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Profile Details text (visible on sm+ screens) */}
             <div className="hidden sm:flex flex-col text-left">
-              <span id="profileEmail" className="text-xs font-semibold text-white max-w-[140px] truncate leading-tight">
-                {user.email || 'admin@softwareplanner.io'}
+              <span id="profileEmail" className="text-xs font-semibold text-white max-w-[150px] truncate leading-tight">
+                {user.email}
               </span>
               <span id="profileRole" className="text-[10px] text-emerald-400 font-medium leading-tight flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -81,13 +76,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-              className="flex items-center gap-2 py-1.5 px-2.5 sm:px-3 bg-slate-950/60 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition"
+              className="flex items-center gap-2 py-1.5 px-2.5 sm:px-3 bg-slate-950/60 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-medium text-slate-200 transition cursor-pointer"
             >
               <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="text-left max-w-[130px] sm:max-w-[200px] truncate">
                 <span className="text-[10px] text-slate-400 block leading-tight">Current Project:</span>
                 <span className="font-semibold text-white text-xs truncate block">
-                  {activeProject ? activeProject.title : 'No Project Selected'}
+                  {activeProject ? activeProject.title : 'Koi Project Nahi Hai'}
                 </span>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
@@ -102,27 +97,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
 
                 <div className="max-h-60 overflow-y-auto py-1">
-                  {projects.map((proj) => {
-                    const isSelected = activeProject?.id === proj.id;
-                    return (
-                      <button
-                        key={proj.id}
-                        onClick={() => {
-                          onSelectProject(proj.id);
-                          setShowProjectDropdown(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-800/80 transition ${
-                          isSelected ? 'bg-emerald-950/40 text-emerald-300 font-medium' : 'text-slate-300'
-                        }`}
-                      >
-                        <div className="truncate pr-2">
-                          <span className="block truncate font-medium">{proj.title}</span>
-                          <span className="text-[10px] text-slate-400 capitalize">{proj.category} • {proj.status}</span>
-                        </div>
-                        {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
+                  {projects.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      Abhi koi project nahi hai. Niche click karke naya project banayein.
+                    </div>
+                  ) : (
+                    projects.map((proj) => {
+                      const isSelected = activeProject?.id === proj.id;
+                      return (
+                        <button
+                          key={proj.id}
+                          onClick={() => {
+                            onSelectProject(proj.id);
+                            setShowProjectDropdown(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-800/80 transition cursor-pointer ${
+                            isSelected ? 'bg-emerald-950/40 text-emerald-300 font-medium' : 'text-slate-300'
+                          }`}
+                        >
+                          <div className="truncate pr-2">
+                            <span className="block truncate font-medium">{proj.title}</span>
+                            <span className="text-[10px] text-slate-400 capitalize">{proj.category} • {proj.status}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
 
                 <div className="p-2 border-t border-slate-800 bg-slate-950/50">
@@ -131,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setShowProjectDropdown(false);
                       onNewProject();
                     }}
-                    className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                    className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
                     + Create New Project
@@ -142,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Quick Action Buttons & Status */}
+        {/* Right Side: Status & Buttons */}
         <div className="flex items-center gap-2 sm:gap-3">
           
           {/* Firestore Status Pill */}
@@ -156,24 +157,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="btn-new-project-top"
             onClick={onNewProject}
-            className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium shadow-sm transition cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5" />
-            <span>New Blueprint</span>
+            <span>+ Naya Project</span>
           </button>
-
-          {/* Quick Sync Button if available */}
-          {onSaveToFirestore && (
-            <button
-              onClick={onSaveToFirestore}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 py-1.5 px-2.5 sm:px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition cursor-pointer"
-              title="Save current blueprint state to Firestore"
-            >
-              <Cloud className={`w-3.5 h-3.5 ${isSaving ? 'animate-bounce text-emerald-400' : 'text-slate-400'}`} />
-              <span className="hidden md:inline">{isSaving ? 'Syncing...' : 'Sync Firestore'}</span>
-            </button>
-          )}
 
           {/* Logout Button */}
           <button
@@ -188,13 +176,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </header>
 
-      {/* Profile Details Modal (when user clicks top-left profile) */}
+      {/* Profile Details Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-100 relative">
             <button 
               onClick={() => setShowProfileModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -216,27 +204,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <div className="space-y-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-xs mb-6">
               <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">UID:</span>
+                <span className="text-slate-400">Firebase UID:</span>
                 <span className="font-mono text-slate-300 text-[11px] truncate max-w-[200px]">{user.uid}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Role Status:</span>
+                <span className="text-slate-400">Role:</span>
                 <span className="text-emerald-400 font-semibold uppercase">{user.role}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Cloud Storage:</span>
-                <span className="text-slate-300">Firebase Firestore (software-4f9fd)</span>
+                <span className="text-slate-400">Firestore Project:</span>
+                <span className="text-slate-300">software-4f9fd</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-400">Session Mode:</span>
-                <span className="text-emerald-400">{user.isDemo ? 'Direct Admin Session' : 'Firebase Authenticated'}</span>
+                <span className="text-slate-400">Architecture:</span>
+                <span className="text-emerald-400">Client-Direct Firestore (No backend server)</span>
               </div>
             </div>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition"
+                className="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition cursor-pointer"
               >
                 Close
               </button>
@@ -245,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowProfileModal(false);
                   onLogout();
                 }}
-                className="py-2 px-4 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5"
+                className="py-2 px-4 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sign Out
