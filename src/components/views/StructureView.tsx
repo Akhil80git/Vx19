@@ -164,13 +164,17 @@ export const StructureView: React.FC<StructureViewProps> = ({
   const [newStructureDesc, setNewStructureDesc] = useState('');
   const [newStructureTemplate, setNewStructureTemplate] = useState<'react' | 'blank'>('react');
 
-  // Node adding modal state
-  const [isAddingNode, setIsAddingNode] = useState(false);
-  const [targetFolderId, setTargetFolderId] = useState<string | null>(null);
-  const [targetFolderName, setTargetFolderName] = useState<string>('Root (/)');
-  const [newNodeName, setNewNodeName] = useState('');
-  const [newNodeType, setNewNodeType] = useState<'folder' | 'file'>('file');
-  const [newNodeDesc, setNewNodeDesc] = useState('');
+  // Inline node creation state (VS Code style - no popups!)
+  const [inlineCreating, setInlineCreating] = useState<{
+    parentId: string | null;
+    type: 'folder' | 'file';
+  } | null>(null);
+  const [inlineName, setInlineName] = useState('');
+  const [inlineDesc, setInlineDesc] = useState('');
+
+  // Inline rename state
+  const [renamingNodeId, setRenamingNodeId] = useState<string | null>(null);
+  const [renamingName, setRenamingName] = useState('');
 
   // Inline quick create structure state
   const [showQuickAddStruct, setShowQuickAddStruct] = useState(false);
@@ -227,6 +231,98 @@ export const StructureView: React.FC<StructureViewProps> = ({
     }));
   };
 
+  // Start inline creation (VS Code style)
+  const handleStartInlineCreate = (parentId: string | null, type: 'folder' | 'file') => {
+    setInlineCreating({ parentId, type });
+    setInlineName('');
+    setInlineDesc('');
+    if (parentId) {
+      setExpandedFolders(prev => ({ ...prev, [parentId]: true }));
+    }
+  };
+
+  // Submit inline creation
+  const handleInlineSubmit = () => {
+    if (!inlineCreating || !inlineName.trim()) {
+      setInlineCreating(null);
+      return;
+    }
+
+    const trimmedName = inlineName.trim();
+    const newNode: FolderNode = {
+      id: 'node_' + Date.now(),
+      name: trimmedName,
+      type: inlineCreating.type,
+      path: `/${trimmedName}`,
+      description: inlineDesc.trim() || undefined,
+      children: inlineCreating.type === 'folder' ? [] : undefined
+    };
+
+    const addRecursive = (nodes: FolderNode[]): FolderNode[] => {
+      if (inlineCreating.parentId === null) {
+        return [...nodes, newNode];
+      }
+      return nodes.map(node => {
+        if (node.id === inlineCreating.parentId && node.type === 'folder') {
+          return {
+            ...node,
+            children: [...(node.children || []), newNode]
+          };
+        }
+        if (node.children && node.children.length > 0) {
+          return {
+            ...node,
+            children: addRecursive(node.children)
+          };
+        }
+        return node;
+      });
+    };
+
+    const updatedTree = addRecursive(activeStructure.tree);
+    updateActiveTree(updatedTree);
+
+    if (inlineCreating.parentId) {
+      setExpandedFolders(prev => ({ ...prev, [inlineCreating.parentId!]: true }));
+    }
+
+    setInlineCreating(null);
+    setInlineName('');
+    setInlineDesc('');
+  };
+
+  // Start inline renaming
+  const handleStartRename = (node: FolderNode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenamingNodeId(node.id);
+    setRenamingName(node.name);
+  };
+
+  // Save inline rename
+  const handleSaveRename = (nodeId: string) => {
+    if (!renamingName.trim()) {
+      setRenamingNodeId(null);
+      return;
+    }
+
+    const renameRecursive = (nodes: FolderNode[]): FolderNode[] => {
+      return nodes.map(node => {
+        if (node.id === nodeId) {
+          return { ...node, name: renamingName.trim() };
+        }
+        if (node.children && node.children.length > 0) {
+          return { ...node, children: renameRecursive(node.children) };
+        }
+        return node;
+      });
+    };
+
+    const updatedTree = renameRecursive(activeStructure.tree);
+    updateActiveTree(updatedTree);
+    setRenamingNodeId(null);
+    setRenamingName('');
+  };
+
   // Add a new Structure to this project
   const handleCreateStructure = (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,55 +368,6 @@ export const StructureView: React.FC<StructureViewProps> = ({
       structures: remaining,
       updatedAt: new Date().toISOString()
     });
-  };
-
-  // Recursively add a node
-  const handleAddNodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newNodeName.trim()) return;
-
-    const newNode: FolderNode = {
-      id: 'node_' + Date.now(),
-      name: newNodeName.trim(),
-      type: newNodeType,
-      path: targetFolderId ? `/${newNodeName.trim()}` : `/${newNodeName.trim()}`,
-      description: newNodeDesc.trim() || undefined,
-      children: newNodeType === 'folder' ? [] : undefined
-    };
-
-    const addRecursive = (nodes: FolderNode[]): FolderNode[] => {
-      if (!targetFolderId) {
-        // Add to root
-        return [...nodes, newNode];
-      }
-      return nodes.map(node => {
-        if (node.id === targetFolderId && node.type === 'folder') {
-          return {
-            ...node,
-            children: [...(node.children || []), newNode]
-          };
-        }
-        if (node.children && node.children.length > 0) {
-          return {
-            ...node,
-            children: addRecursive(node.children)
-          };
-        }
-        return node;
-      });
-    };
-
-    const updatedTree = addRecursive(activeStructure.tree);
-    updateActiveTree(updatedTree);
-
-    if (targetFolderId) {
-      setExpandedFolders(prev => ({ ...prev, [targetFolderId]: true }));
-    }
-
-    setIsAddingNode(false);
-    setTargetFolderId(null);
-    setNewNodeName('');
-    setNewNodeDesc('');
   };
 
   // Quick inline add structure
@@ -415,16 +462,82 @@ echo "Done! Project structure created."
     setTimeout(() => setCopiedBash(false), 2000);
   };
 
+  // Inline input row component (VS Code style)
+  const renderInlineInputRow = (parentId: string | null, type: 'folder' | 'file') => {
+    return (
+      <div className="relative group animate-in fade-in duration-150 my-1">
+        {parentId !== null && (
+          <div className={`absolute -left-5 top-4 w-4 h-px pointer-events-none ${
+            isLight ? 'bg-slate-300' : 'bg-slate-800'
+          }`} />
+        )}
+        <div className={`w-fit min-w-[280px] sm:min-w-[380px] max-w-full flex items-center justify-between gap-2 p-1.5 px-3 rounded-xl border ${
+          isLight
+            ? 'bg-white border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
+            : 'bg-slate-900 border-emerald-500/80 shadow-lg ring-2 ring-emerald-500/30'
+        }`}>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {type === 'folder' ? (
+              <FolderPlus className="w-4 h-4 text-amber-400 shrink-0" />
+            ) : (
+              <FilePlus className="w-4 h-4 text-emerald-500 shrink-0" />
+            )}
+            <input
+              type="text"
+              value={inlineName}
+              onChange={(e) => setInlineName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleInlineSubmit();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setInlineCreating(null);
+                }
+              }}
+              placeholder={type === 'folder' ? 'Folder name (Enter to save, Esc to cancel)...' : 'File name (e.g. index.ts, style.css)...'}
+              autoFocus
+              className={`w-full bg-transparent font-mono text-xs ${
+                isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-slate-500'
+              } focus:outline-none`}
+            />
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handleInlineSubmit}
+              disabled={!inlineName.trim()}
+              className="p-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 transition cursor-pointer"
+              title="Create (Enter)"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setInlineCreating(null)}
+              className={`p-1 rounded ${
+                isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              } transition cursor-pointer`}
+              title="Cancel (Esc)"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Recursive Tree Renderer with Connecting Branch Lines
   const renderConnectedTree = (nodes: FolderNode[], depth = 0, isRoot = true) => {
     if (!nodes || nodes.length === 0) return null;
 
     return (
       <div className={`space-y-1.5 ${!isRoot ? `relative pl-5 ml-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px ${isLight ? 'before:bg-slate-300' : 'before:bg-slate-800'}` : ''}`}>
-        {nodes.map((node, index) => {
+        {nodes.map((node) => {
           const isFolder = node.type === 'folder';
           const isExpanded = expandedFolders[node.id] ?? true;
-          const isLast = index === nodes.length - 1;
+          const isRenaming = renamingNodeId === node.id;
 
           return (
             <div key={node.id} className="relative group">
@@ -438,7 +551,7 @@ echo "Done! Project structure created."
 
               {/* Node Card Row: Dynamic content width */}
               <div 
-                className={`w-fit min-w-[260px] sm:min-w-[340px] max-w-full flex items-center justify-between gap-4 p-2 rounded-xl transition select-none ${
+                className={`w-fit min-w-[260px] sm:min-w-[340px] max-w-full flex items-center justify-between gap-3 p-2 rounded-xl transition select-none ${
                   isLight
                     ? isFolder
                       ? 'bg-white border border-slate-200 hover:border-slate-300 text-slate-900 shadow-xs'
@@ -448,10 +561,10 @@ echo "Done! Project structure created."
                       : 'bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-slate-200'
                 }`}
               >
-                {/* Left Side: Expand icon, folder/file icon, name, description */}
+                {/* Left Side: Expand icon, folder/file icon, name or rename input, description */}
                 <div 
                   className="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer"
-                  onClick={() => isFolder && toggleFolder(node.id)}
+                  onClick={() => !isRenaming && isFolder && toggleFolder(node.id)}
                 >
                   {isFolder ? (
                     <button 
@@ -477,64 +590,97 @@ echo "Done! Project structure created."
                     <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
                   )}
 
-                  {/* Name */}
-                  <span className={`font-mono text-xs truncate ${
-                    isLight 
-                      ? (isFolder ? 'font-bold text-slate-900' : 'font-medium text-slate-800') 
-                      : (isFolder ? 'font-bold text-white' : 'font-medium text-slate-200')
-                  }`}>
-                    {node.name}
-                  </span>
+                  {/* Inline Rename Mode or Static Name */}
+                  {isRenaming ? (
+                    <div className="flex items-center gap-1.5 flex-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={renamingName}
+                        onChange={(e) => setRenamingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveRename(node.id);
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setRenamingNodeId(null);
+                          }
+                        }}
+                        autoFocus
+                        className={`px-2 py-0.5 font-mono text-xs rounded border ${
+                          isLight 
+                            ? 'bg-white border-emerald-500 text-slate-900 ring-1 ring-emerald-500' 
+                            : 'bg-slate-950 border-emerald-500 text-white ring-1 ring-emerald-500'
+                        } focus:outline-none`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveRename(node.id)}
+                        className="p-1 text-emerald-500 hover:text-emerald-400"
+                        title="Save (Enter)"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRenamingNodeId(null)}
+                        className="p-1 text-slate-400 hover:text-slate-600"
+                        title="Cancel (Esc)"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`font-mono text-xs truncate ${
+                      isLight 
+                        ? (isFolder ? 'font-bold text-slate-900' : 'font-medium text-slate-800') 
+                        : (isFolder ? 'font-bold text-white' : 'font-medium text-slate-200')
+                    }`}>
+                      {node.name}
+                    </span>
+                  )}
 
                   {/* File type badge */}
-                  {!isFolder && (
+                  {!isFolder && !isRenaming && (
                     <span className={`px-1.5 py-0.5 text-[9px] font-mono uppercase font-bold rounded border ${getFileBadge(node.name).color}`}>
                       {getFileBadge(node.name).label}
                     </span>
                   )}
 
                   {/* Description note */}
-                  {node.description && (
+                  {node.description && !isRenaming && (
                     <span className={`hidden sm:inline-block text-[11px] truncate italic ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       — {node.description}
                     </span>
                   )}
                 </div>
 
-                {/* Right Side: Quick Add inside folder, or Delete */}
+                {/* Right Side: Inline Quick Add inside folder, Rename Pencil, or Delete */}
                 <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
                   {isFolder && (
                     <>
                       <button
-                        onClick={() => {
-                          setTargetFolderId(node.id);
-                          setTargetFolderName(node.name);
-                          setNewNodeType('file');
-                          setNewNodeName('');
-                          setNewNodeDesc('');
-                          setIsAddingNode(true);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartInlineCreate(node.id, 'file');
                         }}
                         className={`py-1 px-2 text-[11px] rounded-lg flex items-center gap-1 transition cursor-pointer ${
                           isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                         }`}
-                        title="Add file inside this folder"
+                        title="Add file inside this folder (inline)"
                       >
                         <FilePlus className="w-3 h-3 text-emerald-500" />
                         <span className="hidden sm:inline">+ File</span>
                       </button>
                       <button
-                        onClick={() => {
-                          setTargetFolderId(node.id);
-                          setTargetFolderName(node.name);
-                          setNewNodeType('folder');
-                          setNewNodeName('');
-                          setNewNodeDesc('');
-                          setIsAddingNode(true);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartInlineCreate(node.id, 'folder');
                         }}
                         className={`py-1 px-2 text-[11px] rounded-lg flex items-center gap-1 transition cursor-pointer ${
                           isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                         }`}
-                        title="Add sub-folder inside this folder"
+                        title="Add sub-folder inside this folder (inline)"
                       >
                         <FolderPlus className="w-3 h-3 text-amber-400" />
                         <span className="hidden sm:inline">+ Folder</span>
@@ -542,8 +688,22 @@ echo "Done! Project structure created."
                     </>
                   )}
 
+                  {/* Rename button */}
                   <button
-                    onClick={() => handleDeleteNode(node.id)}
+                    onClick={(e) => handleStartRename(node, e)}
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                    title="Rename"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNode(node.id);
+                    }}
                     className={`p-1.5 rounded-lg transition cursor-pointer ${
                       isLight ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-slate-500 hover:text-red-400 hover:bg-slate-800'
                     }`}
@@ -554,10 +714,17 @@ echo "Done! Project structure created."
                 </div>
               </div>
 
-              {/* Recursive Children with Connected Lines */}
-              {isFolder && isExpanded && node.children && node.children.length > 0 && (
+              {/* Recursive Children with Connected Lines + Inline Create Inside Folder */}
+              {isFolder && isExpanded && (
                 <div className="mt-1">
-                  {renderConnectedTree(node.children, depth + 1, false)}
+                  {node.children && node.children.length > 0 && renderConnectedTree(node.children, depth + 1, false)}
+
+                  {/* Inline creating inside this folder */}
+                  {inlineCreating && inlineCreating.parentId === node.id && (
+                    <div className={`space-y-1.5 relative pl-5 ml-2.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px ${isLight ? 'before:bg-slate-300' : 'before:bg-slate-800'}`}>
+                      {renderInlineInputRow(node.id, inlineCreating.type)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -667,18 +834,11 @@ echo "Done! Project structure created."
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
           {/* + Root Folder */}
           <button
-            onClick={() => {
-              setTargetFolderId(null);
-              setTargetFolderName('Root (/)');
-              setNewNodeType('folder');
-              setNewNodeName('');
-              setNewNodeDesc('');
-              setIsAddingNode(true);
-            }}
+            onClick={() => handleStartInlineCreate(null, 'folder')}
             className={`h-8 px-2.5 ${
               isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
             } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
-            title="Create root folder"
+            title="Create root folder (inline)"
           >
             <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
             <span>+ Root Folder</span>
@@ -686,18 +846,11 @@ echo "Done! Project structure created."
 
           {/* + Root File */}
           <button
-            onClick={() => {
-              setTargetFolderId(null);
-              setTargetFolderName('Root (/)');
-              setNewNodeType('file');
-              setNewNodeName('');
-              setNewNodeDesc('');
-              setIsAddingNode(true);
-            }}
+            onClick={() => handleStartInlineCreate(null, 'file')}
             className={`h-8 px-2.5 ${
               isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
             } border rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer`}
-            title="Create root file"
+            title="Create root file (inline)"
           >
             <FilePlus className="w-3.5 h-3.5 text-emerald-500" />
             <span>+ Root File</span>
@@ -752,37 +905,27 @@ echo "Done! Project structure created."
       {/* Main View Area */}
       {viewMode === 'visual' ? (
         <div className={`${isLight ? 'bg-white border-slate-200 text-slate-800 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-100 shadow-xl shadow-black/20'} border p-4 sm:p-6 rounded-2xl`}>
-          {activeStructure.tree.length === 0 ? (
+          {activeStructure.tree.length === 0 && (!inlineCreating || inlineCreating.parentId !== null) ? (
             <div className="p-10 text-center text-slate-400 space-y-3">
               <FolderTree className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="text-xs font-medium text-slate-300">
+              <p className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                 Yeh structure abhi bilkul khali (clean blank) hai.
               </p>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button
-                  onClick={() => {
-                    setTargetFolderId(null);
-                    setTargetFolderName('Root (/)');
-                    setNewNodeType('folder');
-                    setNewNodeName('');
-                    setNewNodeDesc('');
-                    setIsAddingNode(true);
-                  }}
-                  className="py-1.5 px-3 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                  onClick={() => handleStartInlineCreate(null, 'folder')}
+                  className={`py-1.5 px-3 ${
+                    isLight ? 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800' : 'bg-amber-950/80 hover:bg-amber-900 border-amber-500/40 text-amber-300'
+                  } border rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer`}
                 >
                   <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
                   <span>+ Add First Root Folder</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setTargetFolderId(null);
-                    setTargetFolderName('Root (/)');
-                    setNewNodeType('file');
-                    setNewNodeName('');
-                    setNewNodeDesc('');
-                    setIsAddingNode(true);
-                  }}
-                  className="py-1.5 px-3 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                  onClick={() => handleStartInlineCreate(null, 'file')}
+                  className={`py-1.5 px-3 ${
+                    isLight ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/40 text-emerald-300'
+                  } border rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer`}
                 >
                   <FilePlus className="w-3.5 h-3.5 text-emerald-400" />
                   <span>+ Add First Root File</span>
@@ -790,7 +933,15 @@ echo "Done! Project structure created."
               </div>
             </div>
           ) : (
-            renderConnectedTree(activeStructure.tree)
+            <div className="space-y-1.5">
+              {renderConnectedTree(activeStructure.tree)}
+              {/* Inline root level input row */}
+              {inlineCreating && inlineCreating.parentId === null && (
+                <div className="mt-2">
+                  {renderInlineInputRow(null, inlineCreating.type)}
+                </div>
+              )}
+            </div>
           )}
         </div>
       ) : (
@@ -809,86 +960,6 @@ echo "Done! Project structure created."
           <pre className={`p-4 ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-800 text-emerald-300'} border rounded-xl font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto select-all`}>
             {treeToAscii(activeStructure.tree) || 'Root structure is empty.'}
           </pre>
-        </div>
-      )}
-
-      {/* Modal: Add File or Folder (Works 100% reliably for Root & Nested folders) */}
-      {isAddingNode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-slate-100'} border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4`}>
-            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-              <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
-                {newNodeType === 'folder' ? <FolderPlus className="w-5 h-5 text-amber-400" /> : <FilePlus className="w-5 h-5 text-emerald-500" />}
-                <span>
-                  Add {newNodeType === 'folder' ? 'Folder' : 'File'} {targetFolderId ? `in "${targetFolderName}"` : 'at Root Level (/)'}
-                </span>
-              </h3>
-              <button
-                onClick={() => setIsAddingNode(false)}
-                className={`p-1 rounded-lg ${isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'} transition cursor-pointer`}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddNodeSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
-                  {newNodeType === 'folder' 
-                    ? (targetFolderId ? 'Sub-Folder Name (e.g. components, utils, routes)' : 'Root Folder Name (e.g. backend, frontend, docs, server)')
-                    : (targetFolderId ? 'File Name (e.g. Button.tsx, controller.ts)' : 'Root File Name (e.g. package.json, README.md, .env)')}
-                </label>
-                <input
-                  type="text"
-                  value={newNodeName}
-                  onChange={(e) => setNewNodeName(e.target.value)}
-                  placeholder={newNodeType === 'folder' ? (targetFolderId ? 'e.g. services' : 'e.g. backend') : (targetFolderId ? 'e.g. auth.service.ts' : 'e.g. package.json')}
-                  autoFocus
-                  required
-                  className={`w-full ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
-                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
-                  } border rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500`}
-                />
-              </div>
-
-              <div>
-                <label className={`block font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'} mb-1`}>
-                  Description / Purpose <span className="text-slate-400">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={newNodeDesc}
-                  onChange={(e) => setNewNodeDesc(e.target.value)}
-                  placeholder="e.g. Express server or UI components"
-                  className={`w-full ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' 
-                      : 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
-                  } border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500`}
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNode(false)}
-                  className={`py-2 px-4 ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} rounded-xl font-medium transition cursor-pointer`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newNodeName.trim()}
-                  className="py-2 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Add {newNodeType === 'folder' ? 'Folder' : 'File'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 

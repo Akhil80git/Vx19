@@ -462,6 +462,7 @@ service cloud.firestore {
               project={activeProject}
               onUpdateUserMessage={(msg) => setUser(prev => prev ? { ...prev, customMessage: msg } : null)}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'projects-list' ? (
             <ProjectsListView
@@ -475,20 +476,25 @@ service cloud.firestore {
               onDeleteProject={handleDeleteProject}
               onDuplicateProject={handleDuplicateProject}
               onEditProject={handleEditProjectModal}
+              theme={theme}
             />
           ) : !activeProject ? (
             /* Empty clean state when user has 0 projects */
-            <div className="max-w-xl mx-auto my-12 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-4 shadow-xl animate-in fade-in duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+            <div className={`max-w-xl mx-auto my-12 p-8 border rounded-2xl text-center space-y-4 shadow-xl animate-in fade-in duration-200 ${
+              theme === 'light' ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-800 text-slate-100'
+            }`}>
+              <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-2 ${
+                theme === 'light' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
+              }`}>
                 <FolderPlus className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                 Dashboard Clean & Ready
               </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Aapka account (<span className="text-emerald-400 font-semibold">{user.email}</span>) direct Firebase & Google Firestore (<code className="font-mono text-emerald-300">{firebaseConfig.projectId}</code>) se jud chuka hai.
+              <p className={`text-xs leading-relaxed ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'}`}>
+                Aapka account (<span className="text-emerald-500 font-semibold">{user.email}</span>) direct Firebase & Google Firestore (<code className="font-mono text-emerald-600 font-medium">{firebaseConfig.projectId}</code>) se jud chuka hai.
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className={`text-xs leading-relaxed ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
                 Abhi dashboard bilkul clean hai. Aap naya project create karke commands, tech stack, API endpoints aur planning add kar sakte hain — sab data live save hoga!
               </p>
               <div className="pt-3 flex items-center justify-center">
@@ -506,11 +512,13 @@ service cloud.firestore {
               project={activeProject}
               onNavigateTab={(tab) => setActiveTab(tab)}
               onEditProject={() => handleEditProjectModal(activeProject)}
+              theme={theme}
             />
           ) : activeTab === 'tech-stack' ? (
             <ArchitectureView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'structure' ? (
             <StructureView
@@ -534,11 +542,13 @@ service cloud.firestore {
             <ApiPlannerView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : activeTab === 'timeline' ? (
             <TimelineView
               project={activeProject}
               onUpdateProject={handleUpdateActiveProject}
+              theme={theme}
             />
           ) : null}
 
@@ -551,38 +561,47 @@ service cloud.firestore {
         onClose={() => setIsProjectModalOpen(false)}
         onSave={handleSaveProjectModal}
         projectToEdit={projectToEdit}
+        theme={theme}
       />
 
       {/* Firestore Security Rules Helper Modal */}
       {showRulesHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl text-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-amber-400" />
+          <div className={`border rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 ${
+            theme === 'light' ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-slate-100'
+          }`}>
+            <div className={`flex items-center justify-between pb-3 border-b ${theme === 'light' ? 'border-slate-200' : 'border-slate-800'}`}>
+              <h3 className={`text-base font-bold flex items-center gap-2 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                <ShieldAlert className="w-5 h-5 text-amber-500" />
                 Firebase Firestore Security Rules Guide
               </h3>
               <button
                 onClick={() => setShowRulesHelp(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className={`p-1 rounded-lg transition cursor-pointer ${
+                  theme === 'light' ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className={`text-xs leading-relaxed ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'}`}>
               Firebase Console me jab Firestore Database create hota hai, to by default writes locked ho sakti hain.
-              Agar aap chahte hain ki authenticated user (<code className="text-emerald-400 font-mono">{user.email}</code>) direct Firestore me data likh sake, to:
+              Agar aap chahte hain ki authenticated user (<code className="text-emerald-600 font-mono font-medium">{user.email}</code>) direct Firestore me data likh sake, to:
             </p>
 
-            <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <li>Firebase Console kholiye (<code className="text-emerald-300">{firebaseConfig.projectId}</code>).</li>
+            <ol className={`text-xs space-y-1.5 list-decimal list-inside p-3 rounded-xl border ${
+              theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'
+            }`}>
+              <li>Firebase Console kholiye (<code className="text-emerald-500 font-medium">{firebaseConfig.projectId}</code>).</li>
               <li><strong>Firestore Database</strong> &gt; <strong>Rules</strong> tab par jayein.</li>
               <li>Niche diye gaye rules paste karke <strong>Publish</strong> karein:</li>
             </ol>
 
             <div className="relative">
-              <pre className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] font-mono text-emerald-300 overflow-x-auto">
+              <pre className={`p-3 border rounded-xl text-[11px] font-mono overflow-x-auto ${
+                theme === 'light' ? 'bg-slate-900 border-slate-800 text-emerald-400' : 'bg-slate-950 border-slate-800 text-emerald-300'
+              }`}>
                 {firestoreRulesText}
               </pre>
               <button

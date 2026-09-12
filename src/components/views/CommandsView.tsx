@@ -644,7 +644,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           return (
             <div
               key={item.id}
-              className={`group relative w-fit max-w-full flex items-start gap-2.5 p-2.5 border rounded-xl transition duration-100 shadow-xs ${
+              className={`group relative w-full sm:w-fit max-w-full flex flex-col sm:flex-row items-stretch sm:items-start gap-2 sm:gap-2.5 p-2.5 border rounded-xl transition duration-100 shadow-xs ${
                 isLight
                   ? isDirty
                     ? 'bg-amber-50/60 border-amber-400'
@@ -654,37 +654,83 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                     : 'bg-slate-900/90 hover:bg-slate-900 border-slate-800/90 hover:border-slate-700/80 text-slate-100'
               }`}
             >
-              {/* 1. Left: Copy Icon Button */}
-              <button
-                type="button"
-                onClick={() => handleCopy(item.id, item.cmd)}
-                className={`p-1.5 rounded-lg transition shrink-0 cursor-pointer self-start mt-0.5 ${
-                  isCopied 
-                    ? 'text-emerald-500 bg-emerald-100/80' 
-                    : isLight
-                    ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="Copy command"
-              >
-                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              {/* MOBILE ONLY: Top Header Bar (Category, Copy, Save, Delete) */}
+              <div className="flex sm:hidden items-center justify-between w-full pb-1.5 border-b border-dashed border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md font-semibold ${catStyle.badge}`}>
+                    {item.category || 'npm'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(item.id, item.cmd)}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition cursor-pointer ${
+                      isCopied 
+                        ? 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950/80 font-semibold' 
+                        : isLight
+                        ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {isCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
 
-              {/* 2. Bagal mai Name (Category badge: NPM, DB, etc. with distinct feeka color) */}
-              <span className={`self-start mt-1 px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${catStyle.badge}`}>
-                {item.category || 'npm'}
-              </span>
+                <div className="flex items-center gap-1.5">
+                  {isDirty && (
+                    <button
+                      type="button"
+                      onClick={() => handleSaveSingleCommand(item.id)}
+                      className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                      title="Save edit"
+                    >
+                      <Save className="w-3 h-3" />
+                      <span>Save</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCommand(item.id)}
+                    className={`p-1 ${isLight ? 'text-slate-400 hover:text-red-500' : 'text-slate-500 hover:text-red-400'} rounded cursor-pointer`}
+                    title="Delete command"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
 
-              {/* 3. Command & Comment Column */}
+              {/* DESKTOP ONLY: Left Copy Button & Category Badge */}
+              <div className="hidden sm:flex items-center gap-2 shrink-0 self-start mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleCopy(item.id, item.cmd)}
+                  className={`p-1.5 rounded-lg transition shrink-0 cursor-pointer ${
+                    isCopied 
+                      ? 'text-emerald-500 bg-emerald-100/80' 
+                      : isLight
+                      ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title="Copy command"
+                >
+                  {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+
+                <span className={`px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${catStyle.badge}`}>
+                  {item.category || 'npm'}
+                </span>
+              </div>
+
+              {/* Command & Comment Column: Full width on mobile, dynamicCh on desktop */}
               <div
-                className="flex flex-col min-w-0"
+                className="flex flex-col min-w-0 w-full sm:w-auto"
                 style={{
-                  width: `${dynamicCh}ch`,
+                  width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : `${dynamicCh}ch`,
                   maxWidth: '100%',
                 }}
               >
                 {/* Command: Bada Large Font, Customizable Color */}
-                <div className="flex items-start gap-1.5">
+                <div className="flex items-start gap-1.5 w-full">
                   <span className={`${isLight ? 'text-slate-400' : 'text-slate-600'} font-mono select-none text-base font-bold shrink-0 self-start mt-0.5`}>$</span>
                   <textarea
                     value={item.cmd}
@@ -700,7 +746,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                       }
                     }}
                     placeholder="Command string..."
-                    className={`w-full bg-transparent ${activeCmdColorClass} font-mono text-base font-bold focus:outline-none resize-none overflow-hidden leading-snug tracking-tight py-0`}
+                    className={`w-full bg-transparent ${activeCmdColorClass} font-mono text-sm sm:text-base font-bold focus:outline-none resize-none overflow-hidden leading-snug tracking-tight py-0`}
                     style={{ height: 'auto', minHeight: '24px' }}
                     ref={(el) => {
                       if (el) autoResize(el);
@@ -709,7 +755,7 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                 </div>
 
                 {/* Comment: Jitne se command shuru hui theek usi ke neeche, bahut feeka & small */}
-                <div className="flex items-start gap-1 pl-3.5 mt-0.5">
+                <div className="flex items-start gap-1 pl-3 sm:pl-3.5 mt-0.5 w-full">
                   <span className={`${isLight ? 'text-slate-400' : 'text-slate-700'} font-mono text-[11px] select-none shrink-0 mt-0.5`}>#</span>
                   <textarea
                     rows={1}
@@ -738,8 +784,8 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                 </div>
               </div>
 
-              {/* 4. Right: Save Button (if dirty) + Delete Trash Icon */}
-              <div className="flex items-center gap-1.5 shrink-0 self-start mt-1 ml-1">
+              {/* DESKTOP ONLY: Right: Save Button (if dirty) + Delete Trash Icon */}
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0 self-start mt-1 ml-1">
                 {isDirty && (
                   <button
                     type="button"
@@ -765,31 +811,56 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
           );
         })}
 
-        {/* Live Bottom Input Box: Dynamic-width matching the exact same row structure */}
+        {/* Live Bottom Input Box: Stacked on mobile, dynamic-width row on desktop */}
         <form
           onSubmit={handleAddNewCommand}
-          className={`w-fit max-w-full flex items-start gap-2.5 p-2.5 ${
+          className={`w-full sm:w-fit max-w-full flex flex-col sm:flex-row items-stretch sm:items-start gap-2 sm:gap-2.5 p-2.5 ${
             isLight 
               ? 'bg-white border-dashed border-emerald-500/60 hover:border-emerald-500 text-slate-900 shadow-sm' 
               : 'bg-slate-950/90 border-dashed border-emerald-500/40 hover:border-emerald-500 text-slate-100 shadow-inner'
           } border rounded-xl text-xs transition duration-150`}
         >
-          <span className="p-1 text-emerald-500 shrink-0 self-start mt-0.5">
-            <Plus className="w-3.5 h-3.5" />
-          </span>
+          {/* MOBILE ONLY: Top bar with category and Add button */}
+          <div className="flex sm:hidden items-center justify-between w-full pb-1.5 border-b border-dashed border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-1.5">
+              <span className="p-0.5 text-emerald-500">
+                <Plus className="w-3.5 h-3.5" />
+              </span>
+              <span className={`px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md font-semibold ${getCategoryStyle(activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm'), isLight).badge}`}>
+                {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
+              </span>
+            </div>
 
-          <span className={`self-start mt-1 px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${getCategoryStyle(activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm'), isLight).badge}`}>
-            {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
-          </span>
+            <button
+              type="submit"
+              disabled={!newCmdText.trim()}
+              className="h-6 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-md text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add Command</span>
+            </button>
+          </div>
 
+          {/* DESKTOP ONLY: Left Plus icon & Category Badge */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0 self-start mt-0.5">
+            <span className="p-1 text-emerald-500 shrink-0 self-start mt-0.5">
+              <Plus className="w-3.5 h-3.5" />
+            </span>
+
+            <span className={`self-start mt-1 px-2 py-0.5 border text-[10px] font-mono uppercase rounded-md shrink-0 ${getCategoryStyle(activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm'), isLight).badge}`}>
+              {activeCategory !== 'all' ? activeCategory : (categories[0] || 'npm')}
+            </span>
+          </div>
+
+          {/* Command & Comment Inputs: Full width on mobile */}
           <div
-            className="flex flex-col min-w-0"
+            className="flex flex-col min-w-0 w-full sm:w-auto"
             style={{
-              width: `${Math.min(78, Math.max(24, Math.max(newCmdText.length, newCmdComment.length) + 4))}ch`,
+              width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : `${Math.min(78, Math.max(24, Math.max(newCmdText.length, newCmdComment.length) + 4))}ch`,
               maxWidth: '100%',
             }}
           >
-            <div className="flex items-start gap-1.5">
+            <div className="flex items-start gap-1.5 w-full">
               <span className={`${isLight ? 'text-slate-400' : 'text-slate-600'} font-mono select-none text-base font-bold shrink-0 self-start mt-0.5`}>$</span>
               <textarea
                 ref={newCmdTextareaRef}
@@ -806,12 +877,12 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
                   }
                 }}
                 placeholder="Nayi command likhein..."
-                className={`w-full bg-transparent ${activeCmdColorClass} font-mono text-base font-bold focus:outline-none ${isLight ? 'placeholder-slate-400' : 'placeholder-slate-600'} resize-none overflow-hidden leading-snug tracking-tight py-0`}
+                className={`w-full bg-transparent ${activeCmdColorClass} font-mono text-sm sm:text-base font-bold focus:outline-none ${isLight ? 'placeholder-slate-400' : 'placeholder-slate-600'} resize-none overflow-hidden leading-snug tracking-tight py-0`}
                 style={{ height: 'auto', minHeight: '24px' }}
               />
             </div>
 
-            <div className="flex items-start gap-1 pl-3.5 mt-0.5">
+            <div className="flex items-start gap-1 pl-3 sm:pl-3.5 mt-0.5 w-full">
               <span className={`${isLight ? 'text-slate-400' : 'text-slate-700'} font-mono text-[11px] select-none shrink-0 mt-0.5`}>#</span>
               <textarea
                 rows={1}
@@ -837,10 +908,11 @@ export const CommandsView: React.FC<CommandsViewProps> = ({
             </div>
           </div>
 
+          {/* DESKTOP ONLY: Add button */}
           <button
             type="submit"
             disabled={!newCmdText.trim()}
-            className="h-7 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0 self-start mt-0.5 ml-1"
+            className="hidden sm:flex h-7 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white rounded-lg text-xs font-semibold items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0 self-start mt-0.5 ml-1"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add</span>
